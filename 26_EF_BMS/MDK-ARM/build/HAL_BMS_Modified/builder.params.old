@@ -1,0 +1,134 @@
+{
+    "name": "HAL_BMS_Modified",
+    "target": "HAL_BMS_Modified",
+    "toolchain": "AC5",
+    "toolchainLocation": "d:\\Keil\\MDK\\ARM\\ARMCC",
+    "toolchainCfgFile": "c:\\Users\\ride_pig\\.vscode\\extensions\\cl.eide-3.14.0\\res\\data\\models\\win32/arm.v5.model.json",
+    "buildMode": "fast|multhread",
+    "showRepathOnLog": true,
+    "threadNum": 16,
+    "rootDir": "c:\\Users\\ride_pig\\Desktop\\HAL_BMS_2023_Test_E_RUN_SendTemperature\\MDK-ARM",
+    "dumpPath": "build\\HAL_BMS_Modified",
+    "outDir": "build\\HAL_BMS_Modified",
+    "ram": 65536,
+    "rom": 262144,
+    "incDirs": [
+        "../Core/Inc",
+        "../Drivers/STM32F1xx_HAL_Driver/Inc",
+        "../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+        "../Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+        "../Drivers/CMSIS/Include",
+        ".cmsis/include",
+        "RTE/_HAL_BMS_Modified",
+        ".eide/deps"
+    ],
+    "libDirs": [],
+    "defines": [
+        "USE_HAL_DRIVER",
+        "STM32F105xC"
+    ],
+    "sourceList": [
+        "../Core/Src/adc-user.c",
+        "../Core/Src/adc.c",
+        "../Core/Src/can-user.c",
+        "../Core/Src/can.c",
+        "../Core/Src/daisy-user.c",
+        "../Core/Src/data-user.c",
+        "../Core/Src/flash-user.c",
+        "../Core/Src/gpio.c",
+        "../Core/Src/ltc681x-user.c",
+        "../Core/Src/main.c",
+        "../Core/Src/os-user.c",
+        "../Core/Src/relay-user.c",
+        "../Core/Src/spi.c",
+        "../Core/Src/state-user.c",
+        "../Core/Src/stm32f1xx_hal_msp.c",
+        "../Core/Src/stm32f1xx_it.c",
+        "../Core/Src/system_stm32f1xx.c",
+        "../Core/Src/tim.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc_ex.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_can.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_dma.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc_ex.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rtc.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rtc_ex.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_spi.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c",
+        "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c",
+        "startup_stm32f105xc.s"
+    ],
+    "sourceParams": {},
+    "sourceParamsMtime": 1690807832401.0144,
+    "options": {
+        "version": 4,
+        "beforeBuildTasks": [],
+        "afterBuildTasks": [
+            {
+                "name": "axf to elf",
+                "command": "axf2elf -d \"d:\\Keil\\MDK\\ARM\\ARMCC\" -b \"${outDir}\\HAL_BMS_Modified.bin\" -i \"${outDir}\\HAL_BMS_Modified.axf\" -o \"${outDir}\\HAL_BMS_Modified.elf\" > \"${outDir}\\axf2elf.log\""
+            }
+        ],
+        "global": {
+            "use-microLIB": true,
+            "output-debug-info": "enable",
+            "microcontroller-cpu": "cortex-m3",
+            "microcontroller-fpu": "cortex-m3",
+            "microcontroller-float": "cortex-m3",
+            "target": "cortex-m3"
+        },
+        "c/cpp-compiler": {
+            "optimization": "level-0",
+            "one-elf-section-per-function": true,
+            "c99-mode": true,
+            "C_FLAGS": "--diag_suppress=1 --diag_suppress=1295",
+            "CXX_FLAGS": "--diag_suppress=1 --diag_suppress=1295",
+            "warnings": "all-warnings"
+        },
+        "asm-compiler": {},
+        "linker": {
+            "output-format": "elf",
+            "ro-base": "0x08000000",
+            "rw-base": "0x20000000",
+            "link-scatter": [
+                "\"c:/Users/ride_pig/Desktop/HAL_BMS_2023_Test_E_RUN_SendTemperature/MDK-ARM/build/HAL_BMS_Modified/HAL_BMS_Modified.sct\""
+            ]
+        }
+    },
+    "env": {
+        "workspaceFolder": "c:\\Users\\ride_pig\\Desktop\\HAL_BMS_2023_Test_E_RUN_SendTemperature\\MDK-ARM",
+        "workspaceFolderBasename": "MDK-ARM",
+        "OutDir": "c:\\Users\\ride_pig\\Desktop\\HAL_BMS_2023_Test_E_RUN_SendTemperature\\MDK-ARM\\build\\HAL_BMS_Modified",
+        "OutDirRoot": "build",
+        "OutDirBase": "build\\HAL_BMS_Modified",
+        "ProjectName": "HAL_BMS_Modified",
+        "ConfigName": "HAL_BMS_Modified",
+        "ProjectRoot": "c:\\Users\\ride_pig\\Desktop\\HAL_BMS_2023_Test_E_RUN_SendTemperature\\MDK-ARM",
+        "ExecutableName": "c:\\Users\\ride_pig\\Desktop\\HAL_BMS_2023_Test_E_RUN_SendTemperature\\MDK-ARM\\build\\HAL_BMS_Modified\\HAL_BMS_Modified",
+        "SYS_Platform": "win32",
+        "SYS_DirSep": "\\",
+        "SYS_DirSeparator": "\\",
+        "SYS_PathSep": ";",
+        "SYS_PathSeparator": ";",
+        "SYS_EOL": "\r\n",
+        "ToolchainRoot": "d:\\Keil\\MDK\\ARM\\ARMCC"
+    },
+    "sha": {
+        "c/cpp-defines": "6456b5d332ffb0ecf184281f60f7e484",
+        "beforeBuildTasks": "d751713988987e9331980363e24189ce",
+        "afterBuildTasks": "b8033fef91a08816c19876e4793e22ae",
+        "global": "cab97363c56a7cd5c4d6d683dfcaa9f9",
+        "c/cpp-compiler": "d7af9df22cccb3b57acdeb6525e3b9d0",
+        "asm-compiler": "99914b932bd37a50b983c5e7c90ae93b",
+        "linker": "3d627185b8923e1d304d7fddc1426a6c"
+    }
+}

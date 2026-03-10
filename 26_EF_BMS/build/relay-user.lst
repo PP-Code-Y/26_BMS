@@ -1,0 +1,713 @@
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"relay-user.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.AIRP_ON,"ax",%progbits
+  18              		.align	1
+  19              		.global	AIRP_ON
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  24              	AIRP_ON:
+  25              	.LFB65:
+  26              		.file 1 "Core/Src/relay-user.c"
+   1:Core/Src/relay-user.c **** /*
+   2:Core/Src/relay-user.c ****  * relay.c
+   3:Core/Src/relay-user.c ****  *
+   4:Core/Src/relay-user.c ****  *  Created on: 2022年3月6日
+   5:Core/Src/relay-user.c ****  *      Author: BBBBB
+   6:Core/Src/relay-user.c ****  */
+   7:Core/Src/relay-user.c **** #include "main.h"
+   8:Core/Src/relay-user.c **** #include "relay-user.h"
+   9:Core/Src/relay-user.c **** #include "data-user.h"
+  10:Core/Src/relay-user.c **** #include "state-user.h"
+  11:Core/Src/relay-user.c **** 
+  12:Core/Src/relay-user.c **** extern u8 Beep_mute;
+  13:Core/Src/relay-user.c **** extern BMS E03;
+  14:Core/Src/relay-user.c **** 
+  15:Core/Src/relay-user.c **** //AIR+开启
+  16:Core/Src/relay-user.c **** void AIRP_ON(){
+  27              		.loc 1 16 15 view -0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  17:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(AIRP_SW_GPIO_Port, AIRP_SW_Pin, GPIO_PIN_RESET);
+  36              		.loc 1 17 2 view .LVU1
+  37 0002 0022     		movs	r2, #0
+  38 0004 4FF40071 		mov	r1, #512
+  39 0008 0148     		ldr	r0, .L3
+  40 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+  41              	.LVL0:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 2
+
+
+  18:Core/Src/relay-user.c **** }
+  42              		.loc 1 18 1 is_stmt 0 view .LVU2
+  43 000e 08BD     		pop	{r3, pc}
+  44              	.L4:
+  45              		.align	2
+  46              	.L3:
+  47 0010 00100140 		.word	1073811456
+  48              		.cfi_endproc
+  49              	.LFE65:
+  51              		.section	.text.AIRP_OFF,"ax",%progbits
+  52              		.align	1
+  53              		.global	AIRP_OFF
+  54              		.syntax unified
+  55              		.thumb
+  56              		.thumb_func
+  58              	AIRP_OFF:
+  59              	.LFB66:
+  19:Core/Src/relay-user.c **** void AIRP_OFF(){
+  60              		.loc 1 19 16 is_stmt 1 view -0
+  61              		.cfi_startproc
+  62              		@ args = 0, pretend = 0, frame = 0
+  63              		@ frame_needed = 0, uses_anonymous_args = 0
+  64 0000 08B5     		push	{r3, lr}
+  65              	.LCFI1:
+  66              		.cfi_def_cfa_offset 8
+  67              		.cfi_offset 3, -8
+  68              		.cfi_offset 14, -4
+  20:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(AIRP_SW_GPIO_Port, AIRP_SW_Pin, GPIO_PIN_SET);
+  69              		.loc 1 20 2 view .LVU4
+  70 0002 0122     		movs	r2, #1
+  71 0004 4FF40071 		mov	r1, #512
+  72 0008 0148     		ldr	r0, .L7
+  73 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+  74              	.LVL1:
+  21:Core/Src/relay-user.c **** }
+  75              		.loc 1 21 1 is_stmt 0 view .LVU5
+  76 000e 08BD     		pop	{r3, pc}
+  77              	.L8:
+  78              		.align	2
+  79              	.L7:
+  80 0010 00100140 		.word	1073811456
+  81              		.cfi_endproc
+  82              	.LFE66:
+  84              		.section	.text.AIRN_ON,"ax",%progbits
+  85              		.align	1
+  86              		.global	AIRN_ON
+  87              		.syntax unified
+  88              		.thumb
+  89              		.thumb_func
+  91              	AIRN_ON:
+  92              	.LFB67:
+  22:Core/Src/relay-user.c **** 
+  23:Core/Src/relay-user.c **** //AIR-开启
+  24:Core/Src/relay-user.c **** void AIRN_ON(){
+  93              		.loc 1 24 15 is_stmt 1 view -0
+  94              		.cfi_startproc
+  95              		@ args = 0, pretend = 0, frame = 0
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 3
+
+
+  96              		@ frame_needed = 0, uses_anonymous_args = 0
+  97 0000 08B5     		push	{r3, lr}
+  98              	.LCFI2:
+  99              		.cfi_def_cfa_offset 8
+ 100              		.cfi_offset 3, -8
+ 101              		.cfi_offset 14, -4
+  25:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(AIRN_SW_GPIO_Port, AIRN_SW_Pin, GPIO_PIN_RESET);
+ 102              		.loc 1 25 2 view .LVU7
+ 103 0002 0022     		movs	r2, #0
+ 104 0004 4FF40071 		mov	r1, #512
+ 105 0008 0148     		ldr	r0, .L11
+ 106 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 107              	.LVL2:
+  26:Core/Src/relay-user.c **** }
+ 108              		.loc 1 26 1 is_stmt 0 view .LVU8
+ 109 000e 08BD     		pop	{r3, pc}
+ 110              	.L12:
+ 111              		.align	2
+ 112              	.L11:
+ 113 0010 00080140 		.word	1073809408
+ 114              		.cfi_endproc
+ 115              	.LFE67:
+ 117              		.section	.text.AIRN_OFF,"ax",%progbits
+ 118              		.align	1
+ 119              		.global	AIRN_OFF
+ 120              		.syntax unified
+ 121              		.thumb
+ 122              		.thumb_func
+ 124              	AIRN_OFF:
+ 125              	.LFB68:
+  27:Core/Src/relay-user.c **** void AIRN_OFF(){
+ 126              		.loc 1 27 16 is_stmt 1 view -0
+ 127              		.cfi_startproc
+ 128              		@ args = 0, pretend = 0, frame = 0
+ 129              		@ frame_needed = 0, uses_anonymous_args = 0
+ 130 0000 08B5     		push	{r3, lr}
+ 131              	.LCFI3:
+ 132              		.cfi_def_cfa_offset 8
+ 133              		.cfi_offset 3, -8
+ 134              		.cfi_offset 14, -4
+  28:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(AIRN_SW_GPIO_Port, AIRN_SW_Pin, GPIO_PIN_SET);
+ 135              		.loc 1 28 2 view .LVU10
+ 136 0002 0122     		movs	r2, #1
+ 137 0004 4FF40071 		mov	r1, #512
+ 138 0008 0148     		ldr	r0, .L15
+ 139 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 140              	.LVL3:
+  29:Core/Src/relay-user.c **** }
+ 141              		.loc 1 29 1 is_stmt 0 view .LVU11
+ 142 000e 08BD     		pop	{r3, pc}
+ 143              	.L16:
+ 144              		.align	2
+ 145              	.L15:
+ 146 0010 00080140 		.word	1073809408
+ 147              		.cfi_endproc
+ 148              	.LFE68:
+ 150              		.section	.text.PrechargeAIR_ON,"ax",%progbits
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 4
+
+
+ 151              		.align	1
+ 152              		.global	PrechargeAIR_ON
+ 153              		.syntax unified
+ 154              		.thumb
+ 155              		.thumb_func
+ 157              	PrechargeAIR_ON:
+ 158              	.LFB69:
+  30:Core/Src/relay-user.c **** //PRE开启
+  31:Core/Src/relay-user.c **** void PrechargeAIR_ON(){
+ 159              		.loc 1 31 23 is_stmt 1 view -0
+ 160              		.cfi_startproc
+ 161              		@ args = 0, pretend = 0, frame = 0
+ 162              		@ frame_needed = 0, uses_anonymous_args = 0
+ 163 0000 08B5     		push	{r3, lr}
+ 164              	.LCFI4:
+ 165              		.cfi_def_cfa_offset 8
+ 166              		.cfi_offset 3, -8
+ 167              		.cfi_offset 14, -4
+  32:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(PRE_SW_GPIO_Port, PRE_SW_Pin, GPIO_PIN_RESET);
+ 168              		.loc 1 32 2 view .LVU13
+ 169 0002 0022     		movs	r2, #0
+ 170 0004 4FF48071 		mov	r1, #256
+ 171 0008 0148     		ldr	r0, .L19
+ 172 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 173              	.LVL4:
+  33:Core/Src/relay-user.c **** }
+ 174              		.loc 1 33 1 is_stmt 0 view .LVU14
+ 175 000e 08BD     		pop	{r3, pc}
+ 176              	.L20:
+ 177              		.align	2
+ 178              	.L19:
+ 179 0010 00080140 		.word	1073809408
+ 180              		.cfi_endproc
+ 181              	.LFE69:
+ 183              		.section	.text.PrechargeAIR_OFF,"ax",%progbits
+ 184              		.align	1
+ 185              		.global	PrechargeAIR_OFF
+ 186              		.syntax unified
+ 187              		.thumb
+ 188              		.thumb_func
+ 190              	PrechargeAIR_OFF:
+ 191              	.LFB70:
+  34:Core/Src/relay-user.c **** void PrechargeAIR_OFF(){
+ 192              		.loc 1 34 24 is_stmt 1 view -0
+ 193              		.cfi_startproc
+ 194              		@ args = 0, pretend = 0, frame = 0
+ 195              		@ frame_needed = 0, uses_anonymous_args = 0
+ 196 0000 08B5     		push	{r3, lr}
+ 197              	.LCFI5:
+ 198              		.cfi_def_cfa_offset 8
+ 199              		.cfi_offset 3, -8
+ 200              		.cfi_offset 14, -4
+  35:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(PRE_SW_GPIO_Port, PRE_SW_Pin, GPIO_PIN_SET);
+ 201              		.loc 1 35 2 view .LVU16
+ 202 0002 0122     		movs	r2, #1
+ 203 0004 4FF48071 		mov	r1, #256
+ 204 0008 0148     		ldr	r0, .L23
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 5
+
+
+ 205 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 206              	.LVL5:
+  36:Core/Src/relay-user.c **** }
+ 207              		.loc 1 36 1 is_stmt 0 view .LVU17
+ 208 000e 08BD     		pop	{r3, pc}
+ 209              	.L24:
+ 210              		.align	2
+ 211              	.L23:
+ 212 0010 00080140 		.word	1073809408
+ 213              		.cfi_endproc
+ 214              	.LFE70:
+ 216              		.section	.text.Fans_ON,"ax",%progbits
+ 217              		.align	1
+ 218              		.global	Fans_ON
+ 219              		.syntax unified
+ 220              		.thumb
+ 221              		.thumb_func
+ 223              	Fans_ON:
+ 224              	.LFB71:
+  37:Core/Src/relay-user.c **** //开启风扇
+  38:Core/Src/relay-user.c **** void Fans_ON(){
+ 225              		.loc 1 38 15 is_stmt 1 view -0
+ 226              		.cfi_startproc
+ 227              		@ args = 0, pretend = 0, frame = 0
+ 228              		@ frame_needed = 0, uses_anonymous_args = 0
+ 229 0000 08B5     		push	{r3, lr}
+ 230              	.LCFI6:
+ 231              		.cfi_def_cfa_offset 8
+ 232              		.cfi_offset 3, -8
+ 233              		.cfi_offset 14, -4
+  39:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Fans_SW_GPIO_Port, Fans_SW_Pin, GPIO_PIN_RESET);
+ 234              		.loc 1 39 2 view .LVU19
+ 235 0002 0022     		movs	r2, #0
+ 236 0004 4FF48061 		mov	r1, #1024
+ 237 0008 0148     		ldr	r0, .L27
+ 238 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 239              	.LVL6:
+  40:Core/Src/relay-user.c **** }
+ 240              		.loc 1 40 1 is_stmt 0 view .LVU20
+ 241 000e 08BD     		pop	{r3, pc}
+ 242              	.L28:
+ 243              		.align	2
+ 244              	.L27:
+ 245 0010 00080140 		.word	1073809408
+ 246              		.cfi_endproc
+ 247              	.LFE71:
+ 249              		.section	.text.Fans_OFF,"ax",%progbits
+ 250              		.align	1
+ 251              		.global	Fans_OFF
+ 252              		.syntax unified
+ 253              		.thumb
+ 254              		.thumb_func
+ 256              	Fans_OFF:
+ 257              	.LFB72:
+  41:Core/Src/relay-user.c **** void Fans_OFF(){
+ 258              		.loc 1 41 16 is_stmt 1 view -0
+ 259              		.cfi_startproc
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 6
+
+
+ 260              		@ args = 0, pretend = 0, frame = 0
+ 261              		@ frame_needed = 0, uses_anonymous_args = 0
+ 262 0000 08B5     		push	{r3, lr}
+ 263              	.LCFI7:
+ 264              		.cfi_def_cfa_offset 8
+ 265              		.cfi_offset 3, -8
+ 266              		.cfi_offset 14, -4
+  42:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Fans_SW_GPIO_Port, Fans_SW_Pin, GPIO_PIN_SET);
+ 267              		.loc 1 42 2 view .LVU22
+ 268 0002 0122     		movs	r2, #1
+ 269 0004 4FF48061 		mov	r1, #1024
+ 270 0008 0148     		ldr	r0, .L31
+ 271 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 272              	.LVL7:
+  43:Core/Src/relay-user.c **** }
+ 273              		.loc 1 43 1 is_stmt 0 view .LVU23
+ 274 000e 08BD     		pop	{r3, pc}
+ 275              	.L32:
+ 276              		.align	2
+ 277              	.L31:
+ 278 0010 00080140 		.word	1073809408
+ 279              		.cfi_endproc
+ 280              	.LFE72:
+ 282              		.section	.text.AIRS_OFF,"ax",%progbits
+ 283              		.align	1
+ 284              		.global	AIRS_OFF
+ 285              		.syntax unified
+ 286              		.thumb
+ 287              		.thumb_func
+ 289              	AIRS_OFF:
+ 290              	.LFB73:
+  44:Core/Src/relay-user.c **** //关闭所有继电器
+  45:Core/Src/relay-user.c **** void AIRS_OFF(){
+ 291              		.loc 1 45 16 is_stmt 1 view -0
+ 292              		.cfi_startproc
+ 293              		@ args = 0, pretend = 0, frame = 0
+ 294              		@ frame_needed = 0, uses_anonymous_args = 0
+ 295 0000 08B5     		push	{r3, lr}
+ 296              	.LCFI8:
+ 297              		.cfi_def_cfa_offset 8
+ 298              		.cfi_offset 3, -8
+ 299              		.cfi_offset 14, -4
+  46:Core/Src/relay-user.c **** 	PrechargeAIR_OFF();
+ 300              		.loc 1 46 2 view .LVU25
+ 301 0002 FFF7FEFF 		bl	PrechargeAIR_OFF
+ 302              	.LVL8:
+  47:Core/Src/relay-user.c **** 	AIRN_OFF();
+ 303              		.loc 1 47 2 view .LVU26
+ 304 0006 FFF7FEFF 		bl	AIRN_OFF
+ 305              	.LVL9:
+  48:Core/Src/relay-user.c **** 	AIRP_OFF();
+ 306              		.loc 1 48 2 view .LVU27
+ 307 000a FFF7FEFF 		bl	AIRP_OFF
+ 308              	.LVL10:
+  49:Core/Src/relay-user.c **** }
+ 309              		.loc 1 49 1 is_stmt 0 view .LVU28
+ 310 000e 08BD     		pop	{r3, pc}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 7
+
+
+ 311              		.cfi_endproc
+ 312              	.LFE73:
+ 314              		.section	.text.ON_State,"ax",%progbits
+ 315              		.align	1
+ 316              		.global	ON_State
+ 317              		.syntax unified
+ 318              		.thumb
+ 319              		.thumb_func
+ 321              	ON_State:
+ 322              	.LFB74:
+  50:Core/Src/relay-user.c **** /*
+  51:Core/Src/relay-user.c **** 检测点火信号
+  52:Core/Src/relay-user.c **** 没有点火信号时为低
+  53:Core/Src/relay-user.c **** 有点火信号时光耦开启,为高
+  54:Core/Src/relay-user.c **** */
+  55:Core/Src/relay-user.c **** u8 ON_State(){
+ 323              		.loc 1 55 14 is_stmt 1 view -0
+ 324              		.cfi_startproc
+ 325              		@ args = 0, pretend = 0, frame = 0
+ 326              		@ frame_needed = 0, uses_anonymous_args = 0
+ 327 0000 08B5     		push	{r3, lr}
+ 328              	.LCFI9:
+ 329              		.cfi_def_cfa_offset 8
+ 330              		.cfi_offset 3, -8
+ 331              		.cfi_offset 14, -4
+  56:Core/Src/relay-user.c **** 	return HAL_GPIO_ReadPin(Trigger_GPIO_Port, Trigger_Pin);
+ 332              		.loc 1 56 2 view .LVU30
+ 333              		.loc 1 56 9 is_stmt 0 view .LVU31
+ 334 0002 4FF48071 		mov	r1, #256
+ 335 0006 0248     		ldr	r0, .L37
+ 336 0008 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 337              	.LVL11:
+  57:Core/Src/relay-user.c **** }
+ 338              		.loc 1 57 1 view .LVU32
+ 339 000c 08BD     		pop	{r3, pc}
+ 340              	.L38:
+ 341 000e 00BF     		.align	2
+ 342              	.L37:
+ 343 0010 00100140 		.word	1073811456
+ 344              		.cfi_endproc
+ 345              	.LFE74:
+ 347              		.section	.text.IMD_State,"ax",%progbits
+ 348              		.align	1
+ 349              		.global	IMD_State
+ 350              		.syntax unified
+ 351              		.thumb
+ 352              		.thumb_func
+ 354              	IMD_State:
+ 355              	.LFB75:
+  58:Core/Src/relay-user.c **** /*
+  59:Core/Src/relay-user.c **** 检测IMD故障信号, IMD正常时候为0, IMD发生接地故障时候为1
+  60:Core/Src/relay-user.c **** */
+  61:Core/Src/relay-user.c **** u8 IMD_State(){
+ 356              		.loc 1 61 15 is_stmt 1 view -0
+ 357              		.cfi_startproc
+ 358              		@ args = 0, pretend = 0, frame = 0
+ 359              		@ frame_needed = 0, uses_anonymous_args = 0
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 8
+
+
+ 360 0000 08B5     		push	{r3, lr}
+ 361              	.LCFI10:
+ 362              		.cfi_def_cfa_offset 8
+ 363              		.cfi_offset 3, -8
+ 364              		.cfi_offset 14, -4
+  62:Core/Src/relay-user.c **** 	return HAL_GPIO_ReadPin(IMD_IN_GPIO_Port, IMD_IN_Pin);
+ 365              		.loc 1 62 2 view .LVU34
+ 366              		.loc 1 62 9 is_stmt 0 view .LVU35
+ 367 0002 8021     		movs	r1, #128
+ 368 0004 0148     		ldr	r0, .L41
+ 369 0006 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 370              	.LVL12:
+  63:Core/Src/relay-user.c **** }
+ 371              		.loc 1 63 1 view .LVU36
+ 372 000a 08BD     		pop	{r3, pc}
+ 373              	.L42:
+ 374              		.align	2
+ 375              	.L41:
+ 376 000c 000C0140 		.word	1073810432
+ 377              		.cfi_endproc
+ 378              	.LFE75:
+ 380              		.section	.text.Error,"ax",%progbits
+ 381              		.align	1
+ 382              		.global	Error
+ 383              		.syntax unified
+ 384              		.thumb
+ 385              		.thumb_func
+ 387              	Error:
+ 388              	.LFB76:
+  64:Core/Src/relay-user.c **** //BMS错误警告, 蜂鸣器鸣叫, 进入故障状态, 关闭所有继电器
+  65:Core/Src/relay-user.c **** void Error(){
+ 389              		.loc 1 65 13 is_stmt 1 view -0
+ 390              		.cfi_startproc
+ 391              		@ args = 0, pretend = 0, frame = 0
+ 392              		@ frame_needed = 0, uses_anonymous_args = 0
+ 393 0000 08B5     		push	{r3, lr}
+ 394              	.LCFI11:
+ 395              		.cfi_def_cfa_offset 8
+ 396              		.cfi_offset 3, -8
+ 397              		.cfi_offset 14, -4
+  66:Core/Src/relay-user.c **** 	if(E03.State.BMS_State!=BMS_Manual_MODE){	//注意不要工装模式下检测到东西报错, 然�
+ 398              		.loc 1 66 2 view .LVU38
+ 399              		.loc 1 66 14 is_stmt 0 view .LVU39
+ 400 0002 0C4B     		ldr	r3, .L48
+ 401 0004 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 402 0006 DBB2     		uxtb	r3, r3
+ 403              		.loc 1 66 4 view .LVU40
+ 404 0008 0A2B     		cmp	r3, #10
+ 405 000a 0CD0     		beq	.L43
+  67:Core/Src/relay-user.c **** 		if(!(Beep_mute)){
+ 406              		.loc 1 67 3 is_stmt 1 view .LVU41
+ 407              		.loc 1 67 6 is_stmt 0 view .LVU42
+ 408 000c 0A4B     		ldr	r3, .L48+4
+ 409 000e 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 410              		.loc 1 67 5 view .LVU43
+ 411 0010 53B1     		cbz	r3, .L47
+ 412              	.L45:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 9
+
+
+  68:Core/Src/relay-user.c **** 			HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_SET);	//如果禁止位不打�
+  69:Core/Src/relay-user.c **** 			//弄一弄根据不同报警状态发出不同长度叫声的蜂鸣器
+  70:Core/Src/relay-user.c **** 		}
+  71:Core/Src/relay-user.c **** 		HAL_GPIO_WritePin(BMS_ERROR_GPIO_Port, BMS_ERROR_Pin, GPIO_PIN_RESET);		//BMS故障状态输出
+ 413              		.loc 1 71 3 is_stmt 1 view .LVU44
+ 414 0012 0022     		movs	r2, #0
+ 415 0014 0421     		movs	r1, #4
+ 416 0016 0948     		ldr	r0, .L48+8
+ 417 0018 FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 418              	.LVL13:
+  72:Core/Src/relay-user.c **** 		E03.State.BMS_State=BMS_ERROR;	//BMS进入故障状态
+ 419              		.loc 1 72 3 view .LVU45
+ 420              		.loc 1 72 22 is_stmt 0 view .LVU46
+ 421 001c 054B     		ldr	r3, .L48
+ 422 001e 0722     		movs	r2, #7
+ 423 0020 9A73     		strb	r2, [r3, #14]
+  73:Core/Src/relay-user.c **** 		AIRS_OFF();	//关闭所有继电器
+ 424              		.loc 1 73 3 is_stmt 1 view .LVU47
+ 425 0022 FFF7FEFF 		bl	AIRS_OFF
+ 426              	.LVL14:
+ 427              	.L43:
+  74:Core/Src/relay-user.c **** 	}
+  75:Core/Src/relay-user.c **** }
+ 428              		.loc 1 75 1 is_stmt 0 view .LVU48
+ 429 0026 08BD     		pop	{r3, pc}
+ 430              	.L47:
+  68:Core/Src/relay-user.c **** 			//弄一弄根据不同报警状态发出不同长度叫声的蜂鸣器
+ 431              		.loc 1 68 4 is_stmt 1 view .LVU49
+ 432 0028 0122     		movs	r2, #1
+ 433 002a 8021     		movs	r1, #128
+ 434 002c 0448     		ldr	r0, .L48+12
+ 435 002e FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 436              	.LVL15:
+ 437 0032 EEE7     		b	.L45
+ 438              	.L49:
+ 439              		.align	2
+ 440              	.L48:
+ 441 0034 00000000 		.word	E03
+ 442 0038 00000000 		.word	Beep_mute
+ 443 003c 00080140 		.word	1073809408
+ 444 0040 00100140 		.word	1073811456
+ 445              		.cfi_endproc
+ 446              	.LFE76:
+ 448              		.section	.text.ON_Beep,"ax",%progbits
+ 449              		.align	1
+ 450              		.global	ON_Beep
+ 451              		.syntax unified
+ 452              		.thumb
+ 453              		.thumb_func
+ 455              	ON_Beep:
+ 456              	.LFB77:
+  76:Core/Src/relay-user.c **** /*点火状态下蜂鸣器鸣叫*/
+  77:Core/Src/relay-user.c **** void ON_Beep(){
+ 457              		.loc 1 77 15 view -0
+ 458              		.cfi_startproc
+ 459              		@ args = 0, pretend = 0, frame = 0
+ 460              		@ frame_needed = 0, uses_anonymous_args = 0
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 10
+
+
+ 461 0000 10B5     		push	{r4, lr}
+ 462              	.LCFI12:
+ 463              		.cfi_def_cfa_offset 8
+ 464              		.cfi_offset 4, -8
+ 465              		.cfi_offset 14, -4
+  78:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_SET);	//蜂鸣器鸣叫100ms
+ 466              		.loc 1 78 2 view .LVU51
+ 467 0002 204C     		ldr	r4, .L52
+ 468 0004 0122     		movs	r2, #1
+ 469 0006 8021     		movs	r1, #128
+ 470 0008 2046     		mov	r0, r4
+ 471 000a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 472              	.LVL16:
+  79:Core/Src/relay-user.c **** 	HAL_Delay(100);
+ 473              		.loc 1 79 2 view .LVU52
+ 474 000e 6420     		movs	r0, #100
+ 475 0010 FFF7FEFF 		bl	HAL_Delay
+ 476              	.LVL17:
+  80:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_RESET);	//则蜂鸣器关闭100ms
+ 477              		.loc 1 80 2 view .LVU53
+ 478 0014 0022     		movs	r2, #0
+ 479 0016 8021     		movs	r1, #128
+ 480 0018 2046     		mov	r0, r4
+ 481 001a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 482              	.LVL18:
+  81:Core/Src/relay-user.c **** 	HAL_Delay(100);
+ 483              		.loc 1 81 2 view .LVU54
+ 484 001e 6420     		movs	r0, #100
+ 485 0020 FFF7FEFF 		bl	HAL_Delay
+ 486              	.LVL19:
+  82:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_SET);	//蜂鸣器鸣叫100ms
+ 487              		.loc 1 82 2 view .LVU55
+ 488 0024 0122     		movs	r2, #1
+ 489 0026 8021     		movs	r1, #128
+ 490 0028 2046     		mov	r0, r4
+ 491 002a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 492              	.LVL20:
+  83:Core/Src/relay-user.c **** 	HAL_Delay(100);
+ 493              		.loc 1 83 2 view .LVU56
+ 494 002e 6420     		movs	r0, #100
+ 495 0030 FFF7FEFF 		bl	HAL_Delay
+ 496              	.LVL21:
+  84:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_RESET);	//则蜂鸣器关闭100ms
+ 497              		.loc 1 84 2 view .LVU57
+ 498 0034 0022     		movs	r2, #0
+ 499 0036 8021     		movs	r1, #128
+ 500 0038 2046     		mov	r0, r4
+ 501 003a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 502              	.LVL22:
+  85:Core/Src/relay-user.c **** 	HAL_Delay(100);
+ 503              		.loc 1 85 2 view .LVU58
+ 504 003e 6420     		movs	r0, #100
+ 505 0040 FFF7FEFF 		bl	HAL_Delay
+ 506              	.LVL23:
+  86:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_SET);	//蜂鸣器鸣叫100ms
+ 507              		.loc 1 86 2 view .LVU59
+ 508 0044 0122     		movs	r2, #1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 11
+
+
+ 509 0046 8021     		movs	r1, #128
+ 510 0048 2046     		mov	r0, r4
+ 511 004a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 512              	.LVL24:
+  87:Core/Src/relay-user.c **** 	HAL_Delay(100);
+ 513              		.loc 1 87 2 view .LVU60
+ 514 004e 6420     		movs	r0, #100
+ 515 0050 FFF7FEFF 		bl	HAL_Delay
+ 516              	.LVL25:
+  88:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_RESET);	//则蜂鸣器关闭100ms
+ 517              		.loc 1 88 2 view .LVU61
+ 518 0054 0022     		movs	r2, #0
+ 519 0056 8021     		movs	r1, #128
+ 520 0058 2046     		mov	r0, r4
+ 521 005a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 522              	.LVL26:
+  89:Core/Src/relay-user.c **** 	HAL_Delay(100);
+ 523              		.loc 1 89 2 view .LVU62
+ 524 005e 6420     		movs	r0, #100
+ 525 0060 FFF7FEFF 		bl	HAL_Delay
+ 526              	.LVL27:
+  90:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_SET);	//蜂鸣器鸣叫100ms
+ 527              		.loc 1 90 2 view .LVU63
+ 528 0064 0122     		movs	r2, #1
+ 529 0066 8021     		movs	r1, #128
+ 530 0068 2046     		mov	r0, r4
+ 531 006a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 532              	.LVL28:
+  91:Core/Src/relay-user.c **** 	HAL_Delay(1000);
+ 533              		.loc 1 91 2 view .LVU64
+ 534 006e 4FF47A70 		mov	r0, #1000
+ 535 0072 FFF7FEFF 		bl	HAL_Delay
+ 536              	.LVL29:
+  92:Core/Src/relay-user.c **** 	HAL_GPIO_WritePin(Error_Beep_GPIO_Port, Error_Beep_Pin, GPIO_PIN_RESET);	//则蜂鸣器关闭1s
+ 537              		.loc 1 92 2 view .LVU65
+ 538 0076 0022     		movs	r2, #0
+ 539 0078 8021     		movs	r1, #128
+ 540 007a 2046     		mov	r0, r4
+ 541 007c FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 542              	.LVL30:
+  93:Core/Src/relay-user.c **** }
+ 543              		.loc 1 93 1 is_stmt 0 view .LVU66
+ 544 0080 10BD     		pop	{r4, pc}
+ 545              	.L53:
+ 546 0082 00BF     		.align	2
+ 547              	.L52:
+ 548 0084 00100140 		.word	1073811456
+ 549              		.cfi_endproc
+ 550              	.LFE77:
+ 552              		.text
+ 553              	.Letext0:
+ 554              		.file 2 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\machine\\_default_types.h"
+ 555              		.file 3 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\sys\\_stdint.h"
+ 556              		.file 4 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f105xc.h"
+ 557              		.file 5 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio.h"
+ 558              		.file 6 "Core/Inc/data-user.h"
+ 559              		.file 7 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h"
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 12
+
+
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s 			page 13
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 relay-user.c
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:18     .text.AIRP_ON:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:24     .text.AIRP_ON:00000000 AIRP_ON
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:47     .text.AIRP_ON:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:52     .text.AIRP_OFF:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:58     .text.AIRP_OFF:00000000 AIRP_OFF
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:80     .text.AIRP_OFF:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:85     .text.AIRN_ON:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:91     .text.AIRN_ON:00000000 AIRN_ON
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:113    .text.AIRN_ON:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:118    .text.AIRN_OFF:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:124    .text.AIRN_OFF:00000000 AIRN_OFF
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:146    .text.AIRN_OFF:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:151    .text.PrechargeAIR_ON:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:157    .text.PrechargeAIR_ON:00000000 PrechargeAIR_ON
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:179    .text.PrechargeAIR_ON:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:184    .text.PrechargeAIR_OFF:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:190    .text.PrechargeAIR_OFF:00000000 PrechargeAIR_OFF
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:212    .text.PrechargeAIR_OFF:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:217    .text.Fans_ON:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:223    .text.Fans_ON:00000000 Fans_ON
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:245    .text.Fans_ON:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:250    .text.Fans_OFF:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:256    .text.Fans_OFF:00000000 Fans_OFF
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:278    .text.Fans_OFF:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:283    .text.AIRS_OFF:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:289    .text.AIRS_OFF:00000000 AIRS_OFF
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:315    .text.ON_State:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:321    .text.ON_State:00000000 ON_State
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:343    .text.ON_State:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:348    .text.IMD_State:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:354    .text.IMD_State:00000000 IMD_State
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:376    .text.IMD_State:0000000c $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:381    .text.Error:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:387    .text.Error:00000000 Error
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:441    .text.Error:00000034 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:449    .text.ON_Beep:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:455    .text.ON_Beep:00000000 ON_Beep
+C:\Users\ride_pig\AppData\Local\Temp\ccqCJw40.s:548    .text.ON_Beep:00000084 $d
+
+UNDEFINED SYMBOLS
+HAL_GPIO_WritePin
+HAL_GPIO_ReadPin
+E03
+Beep_mute
+HAL_Delay

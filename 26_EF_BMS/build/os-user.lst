@@ -1,0 +1,3507 @@
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"os-user.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.TaskCreate,"ax",%progbits
+  18              		.align	1
+  19              		.global	TaskCreate
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  24              	TaskCreate:
+  25              	.LVL0:
+  26              	.LFB65:
+  27              		.file 1 "Core/Src/os-user.c"
+   1:Core/Src/os-user.c **** /*
+   2:Core/Src/os-user.c ****  * os.c
+   3:Core/Src/os-user.c ****  *	BMS的操作系统
+   4:Core/Src/os-user.c ****  *  Created on: 2022年3月6日
+   5:Core/Src/os-user.c ****  *      Author: BBBBB
+   6:Core/Src/os-user.c ****  */
+   7:Core/Src/os-user.c **** 
+   8:Core/Src/os-user.c **** #include "data-user.h"
+   9:Core/Src/os-user.c **** #include "os-user.h"
+  10:Core/Src/os-user.c **** #include "state-user.h"
+  11:Core/Src/os-user.c **** #include "adc-user.h"
+  12:Core/Src/os-user.c **** #include "daisy-user.h"
+  13:Core/Src/os-user.c **** #include "can-user.h"
+  14:Core/Src/os-user.c **** #include "ltc681x-user.h"
+  15:Core/Src/os-user.c **** #include "relay-user.h"
+  16:Core/Src/os-user.c **** #include "stm32f1xx_hal_spi.h"
+  17:Core/Src/os-user.c **** 
+  18:Core/Src/os-user.c **** // 声明任务的句柄，所有句柄的名字就是对应函数加上_Handle后缀
+  19:Core/Src/os-user.c **** Task Precharge_Run_Handle, charge_ing_Handle, BMS_StateMachine_Handle,
+  20:Core/Src/os-user.c **** 		Hall_Timeout_Handle, State_Upgrade_Handle, Slave_Measure_Handle,
+  21:Core/Src/os-user.c **** 		OpenVol_Check_Handle, BMS_Can_Handle, IMD_Detect_Hanlde;
+  22:Core/Src/os-user.c **** 
+  23:Core/Src/os-user.c **** // /*改任务记得修改*/
+  24:Core/Src/os-user.c **** // #define TASK_NUM sizeof(BMS_Tasks)/sizeof(TASK_COMPONENTS)	//计算任务数, 以前是单纯设
+  25:Core/Src/os-user.c **** 
+  26:Core/Src/os-user.c **** extern BMS E03;
+  27:Core/Src/os-user.c **** extern MODULE Module[Total_ic];
+  28:Core/Src/os-user.c **** extern u8 n_Cell[Total_ic];
+  29:Core/Src/os-user.c **** vu8 Hall_Count=0;				//100ms内没有收到霍尔电流数据就自增1, 然后进入task3里面判
+  30:Core/Src/os-user.c **** vu8 Can_Charge_Count=0;
+  31:Core/Src/os-user.c **** vu8 Trigger_True=0;				//发生熄火信号
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 2
+
+
+  32:Core/Src/os-user.c **** 
+  33:Core/Src/os-user.c **** /********************************************************************
+  34:Core/Src/os-user.c ****  * 任务定义
+  35:Core/Src/os-user.c ****  ********************************************************************/
+  36:Core/Src/os-user.c **** // TASK_COMPONENTS BMS_Tasks[]=
+  37:Core/Src/os-user.c **** // {
+  38:Core/Src/os-user.c **** // 	{0, 0xFFFF, 0xFFFF, Precharge_Run},
+  39:Core/Src/os-user.c **** // 	{0, 1000, 1000, charge_ing},	//1S, 后续应仿照上一条任务一样, 正常为0xFF, 该运�
+  40:Core/Src/os-user.c **** // 	{0, 50, 50, BMS_StateMachine},	//50ms
+  41:Core/Src/os-user.c **** // 	{0, 100, 100, Hall_Timeout},	//100ms
+  42:Core/Src/os-user.c **** // 	{0, 100, 100, State_Upgrade},	//100ms
+  43:Core/Src/os-user.c **** // 	{0, 200, 200, Slave_Measure},	//60ms
+  44:Core/Src/os-user.c **** // 	{0, 250, 250, OpenVol_Check},	//500ms, 断线检测, 累计断线2次才会报错, 符合赛规
+  45:Core/Src/os-user.c **** // 	{0, 100, 100, BMS_Can},			//100ms, 只负责发BMS的一些状态数据, 不包括充电机CAN
+  46:Core/Src/os-user.c **** // 	{0, 500, 500, IMD_Detect}		//500ms, IMD的状态监测
+  47:Core/Src/os-user.c **** // };
+  48:Core/Src/os-user.c **** // //此函数在TIM中断回调运行, 为了计时用
+  49:Core/Src/os-user.c **** // void TaskStatusCheck(TASK_COMPONENTS* TaskComps){
+  50:Core/Src/os-user.c **** // 	u8 i;
+  51:Core/Src/os-user.c **** // 	for(i=0; i<TASK_NUM; i++){			//逐个任务时间处理
+  52:Core/Src/os-user.c **** // 		if(TaskComps[i].Timer){			//时间不为0
+  53:Core/Src/os-user.c **** // 			TaskComps[i].Timer--;		//减去1个节拍
+  54:Core/Src/os-user.c **** // 			if(!TaskComps[i].Timer){	//时间减完了, 时间到了
+  55:Core/Src/os-user.c **** // 				TaskComps[i].Timer = TaskComps[i].ItvTime;	//恢复定时器值, 开始下一轮计时
+  56:Core/Src/os-user.c **** // 				TaskComps[i].Run = 1;	//任务可以去运行了
+  57:Core/Src/os-user.c **** // 			}
+  58:Core/Src/os-user.c **** // 		}
+  59:Core/Src/os-user.c **** // 	}
+  60:Core/Src/os-user.c **** // }
+  61:Core/Src/os-user.c **** // //在while里面跑, 为执行每个任务, 同时可以调整上面结构体的顺序以调整�
+  62:Core/Src/os-user.c **** // void TaskSchedule(TASK_COMPONENTS* TaskComps){
+  63:Core/Src/os-user.c **** // 	u8 i;
+  64:Core/Src/os-user.c **** // 	for(i=0; i<TASK_NUM; i++){	//逐个任务时间处理
+  65:Core/Src/os-user.c **** // 		if(TaskComps[i].Run){	//程序可以运行
+  66:Core/Src/os-user.c **** // 			TaskComps[i].TaskHook();	//运行任务
+  67:Core/Src/os-user.c **** // 			TaskComps[i].Run = 0;		//标志位清零
+  68:Core/Src/os-user.c **** // 		}
+  69:Core/Src/os-user.c **** // 	}
+  70:Core/Src/os-user.c **** // }
+  71:Core/Src/os-user.c **** 
+  72:Core/Src/os-user.c **** // 任务管理器
+  73:Core/Src/os-user.c **** // 声明任务管理器是volatile的，防止编译器优化
+  74:Core/Src/os-user.c **** volatile TaskManager taskManager = {NULL, NULL};
+  75:Core/Src/os-user.c **** 
+  76:Core/Src/os-user.c ****  /**
+  77:Core/Src/os-user.c ****   * @brief  创建一个任务，也即将一个任务添加到链表中
+  78:Core/Src/os-user.c ****   * @param  taskHandle PCB指针，指向要创建任务的PCB
+  79:Core/Src/os-user.c ****   * @param  itvTime 任务运行间隔时间，每次任务的计时器走到零，就使用改变�
+  80:Core/Src/os-user.c ****   * @param  Task_Function 要运行的任务函数
+  81:Core/Src/os-user.c ****   * @param  parameter 要传递给任务函数的参数，没有则填NULL
+  82:Core/Src/os-user.c ****   * @retval 无
+  83:Core/Src/os-user.c ****   * @author ride_pig
+  84:Core/Src/os-user.c ****   */
+  85:Core/Src/os-user.c **** void TaskCreate(Task *taskHandle, u16 itvTime, void (*Task_Function)(void *), void *parameter)
+  86:Core/Src/os-user.c **** {
+  28              		.loc 1 86 1 view -0
+  29              		.cfi_startproc
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 3
+
+
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  87:Core/Src/os-user.c **** 	taskHandle->taskInfo.timer = taskHandle->taskInfo.itvTime = itvTime;
+  33              		.loc 1 87 2 view .LVU1
+  34              		.loc 1 87 60 is_stmt 0 view .LVU2
+  35 0000 8180     		strh	r1, [r0, #4]	@ movhi
+  36              		.loc 1 87 29 view .LVU3
+  37 0002 4180     		strh	r1, [r0, #2]	@ movhi
+  88:Core/Src/os-user.c **** 	taskHandle->taskInfo.Task_Function = Task_Function;
+  38              		.loc 1 88 2 is_stmt 1 view .LVU4
+  39              		.loc 1 88 37 is_stmt 0 view .LVU5
+  40 0004 8260     		str	r2, [r0, #8]
+  89:Core/Src/os-user.c **** 	taskHandle->taskInfo.parameter = parameter;
+  41              		.loc 1 89 2 is_stmt 1 view .LVU6
+  42              		.loc 1 89 33 is_stmt 0 view .LVU7
+  43 0006 C360     		str	r3, [r0, #12]
+  90:Core/Src/os-user.c **** 	taskHandle->taskInfo.status = TASK_IDLE;
+  44              		.loc 1 90 2 is_stmt 1 view .LVU8
+  45              		.loc 1 90 30 is_stmt 0 view .LVU9
+  46 0008 0023     		movs	r3, #0
+  47              	.LVL1:
+  48              		.loc 1 90 30 view .LVU10
+  49 000a 0370     		strb	r3, [r0]
+  91:Core/Src/os-user.c **** 	taskHandle->nextTask = NULL;
+  50              		.loc 1 91 2 is_stmt 1 view .LVU11
+  51              		.loc 1 91 23 is_stmt 0 view .LVU12
+  52 000c 0361     		str	r3, [r0, #16]
+  92:Core/Src/os-user.c **** 
+  93:Core/Src/os-user.c **** 	// lastTask为当前链表中最后一个任务，使用for循环找到当前最后一个任务，
+  94:Core/Src/os-user.c **** 	if (taskManager.taskHead != NULL) {
+  53              		.loc 1 94 2 is_stmt 1 view .LVU13
+  54              		.loc 1 94 17 is_stmt 0 view .LVU14
+  55 000e 074B     		ldr	r3, .L6
+  56 0010 5B68     		ldr	r3, [r3, #4]
+  57              		.loc 1 94 5 view .LVU15
+  58 0012 43B1     		cbz	r3, .L2
+  59              	.LBB2:
+  95:Core/Src/os-user.c **** 		Task *lastTask = taskManager.taskHead;
+  60              		.loc 1 95 3 is_stmt 1 view .LVU16
+  61              		.loc 1 95 9 is_stmt 0 view .LVU17
+  62 0014 054B     		ldr	r3, .L6
+  63 0016 5B68     		ldr	r3, [r3, #4]
+  64              	.LVL2:
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  65              		.loc 1 96 3 is_stmt 1 view .LVU18
+  66 0018 01E0     		b	.L3
+  67              	.LVL3:
+  68              	.L4:
+  97:Core/Src/os-user.c **** 			lastTask->nextTask=taskHandle;
+  69              		.loc 1 97 4 discriminator 2 view .LVU19
+  70              		.loc 1 97 22 is_stmt 0 discriminator 2 view .LVU20
+  71 001a 1861     		str	r0, [r3, #16]
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  72              		.loc 1 96 47 is_stmt 1 discriminator 2 view .LVU21
+  73              	.LVL4:
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 4
+
+
+  74              		.loc 1 96 47 is_stmt 0 discriminator 2 view .LVU22
+  75 001c 0346     		mov	r3, r0
+  76              	.LVL5:
+  77              	.L3:
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  78              		.loc 1 96 29 is_stmt 1 discriminator 1 view .LVU23
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  79              		.loc 1 96 18 is_stmt 0 discriminator 1 view .LVU24
+  80 001e 1A69     		ldr	r2, [r3, #16]
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  81              		.loc 1 96 29 discriminator 1 view .LVU25
+  82 0020 002A     		cmp	r2, #0
+  83 0022 FAD1     		bne	.L4
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  84              		.loc 1 96 29 discriminator 1 view .LVU26
+  85 0024 7047     		bx	lr
+  86              	.LVL6:
+  87              	.L2:
+  96:Core/Src/os-user.c **** 		for (; lastTask->nextTask != NULL; lastTask = lastTask->nextTask) {
+  88              		.loc 1 96 29 discriminator 1 view .LVU27
+  89              	.LBE2:
+  98:Core/Src/os-user.c **** 		}		
+  99:Core/Src/os-user.c **** 	}else {
+ 100:Core/Src/os-user.c **** 		taskManager.taskHead = taskHandle;
+  90              		.loc 1 100 3 is_stmt 1 view .LVU28
+  91              		.loc 1 100 24 is_stmt 0 view .LVU29
+  92 0026 014B     		ldr	r3, .L6
+  93 0028 5860     		str	r0, [r3, #4]
+ 101:Core/Src/os-user.c **** 	}
+ 102:Core/Src/os-user.c **** }
+  94              		.loc 1 102 1 view .LVU30
+  95 002a 7047     		bx	lr
+  96              	.L7:
+  97              		.align	2
+  98              	.L6:
+  99 002c 00000000 		.word	.LANCHOR0
+ 100              		.cfi_endproc
+ 101              	.LFE65:
+ 103              		.section	.text.TaskDelete,"ax",%progbits
+ 104              		.align	1
+ 105              		.global	TaskDelete
+ 106              		.syntax unified
+ 107              		.thumb
+ 108              		.thumb_func
+ 110              	TaskDelete:
+ 111              	.LVL7:
+ 112              	.LFB66:
+ 103:Core/Src/os-user.c **** 
+ 104:Core/Src/os-user.c ****  /**
+ 105:Core/Src/os-user.c ****   * @brief  从链表中删除一个任务。注意，这里只是将任务从链表中去除，任
+ 106:Core/Src/os-user.c ****   * @param  taskHandle PCB指针，指向要删除任务的PCB
+ 107:Core/Src/os-user.c ****   * @retval 无
+ 108:Core/Src/os-user.c ****   * @author ride_pig
+ 109:Core/Src/os-user.c ****   */
+ 110:Core/Src/os-user.c **** void TaskDelete(Task *taskHandle)
+ 111:Core/Src/os-user.c **** {
+ 113              		.loc 1 111 1 is_stmt 1 view -0
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 5
+
+
+ 114              		.cfi_startproc
+ 115              		@ args = 0, pretend = 0, frame = 0
+ 116              		@ frame_needed = 0, uses_anonymous_args = 0
+ 117              		@ link register save eliminated.
+ 112:Core/Src/os-user.c **** 	// 如果要删除的任务是链表中的第一个任务，则需要做相应的处理
+ 113:Core/Src/os-user.c **** 	if (taskManager.taskHead == taskHandle) {
+ 118              		.loc 1 113 2 view .LVU32
+ 119              		.loc 1 113 17 is_stmt 0 view .LVU33
+ 120 0000 0D4B     		ldr	r3, .L16
+ 121 0002 5B68     		ldr	r3, [r3, #4]
+ 122              		.loc 1 113 5 view .LVU34
+ 123 0004 8342     		cmp	r3, r0
+ 124 0006 02D0     		beq	.L14
+ 125              	.LBB3:
+ 114:Core/Src/os-user.c **** 		taskManager.taskHead = taskHandle->nextTask;
+ 115:Core/Src/os-user.c **** 		taskHandle->nextTask = NULL;
+ 116:Core/Src/os-user.c **** 		taskHandle->taskInfo.status = TASK_DEL;
+ 117:Core/Src/os-user.c **** 	}else {
+ 118:Core/Src/os-user.c **** 		// 若要删除的任务不是链表中的第一个任务，则找到要删除任务的前一个�
+ 119:Core/Src/os-user.c **** 		Task *previousTask = taskManager.taskHead;
+ 126              		.loc 1 119 3 is_stmt 1 view .LVU35
+ 127              		.loc 1 119 9 is_stmt 0 view .LVU36
+ 128 0008 0B4B     		ldr	r3, .L16
+ 129 000a 5B68     		ldr	r3, [r3, #4]
+ 130              	.LVL8:
+ 120:Core/Src/os-user.c **** 		for (; previousTask->nextTask != NULL; previousTask = previousTask->nextTask) {
+ 131              		.loc 1 120 3 is_stmt 1 view .LVU37
+ 132 000c 08E0     		b	.L11
+ 133              	.LVL9:
+ 134              	.L14:
+ 135              		.loc 1 120 3 is_stmt 0 view .LVU38
+ 136              	.LBE3:
+ 114:Core/Src/os-user.c **** 		taskManager.taskHead = taskHandle->nextTask;
+ 137              		.loc 1 114 3 is_stmt 1 view .LVU39
+ 114:Core/Src/os-user.c **** 		taskManager.taskHead = taskHandle->nextTask;
+ 138              		.loc 1 114 36 is_stmt 0 view .LVU40
+ 139 000e 0269     		ldr	r2, [r0, #16]
+ 114:Core/Src/os-user.c **** 		taskManager.taskHead = taskHandle->nextTask;
+ 140              		.loc 1 114 24 view .LVU41
+ 141 0010 094B     		ldr	r3, .L16
+ 142 0012 5A60     		str	r2, [r3, #4]
+ 115:Core/Src/os-user.c **** 		taskHandle->taskInfo.status = TASK_DEL;
+ 143              		.loc 1 115 3 is_stmt 1 view .LVU42
+ 115:Core/Src/os-user.c **** 		taskHandle->taskInfo.status = TASK_DEL;
+ 144              		.loc 1 115 24 is_stmt 0 view .LVU43
+ 145 0014 0023     		movs	r3, #0
+ 146 0016 0361     		str	r3, [r0, #16]
+ 116:Core/Src/os-user.c **** 	}else {
+ 147              		.loc 1 116 3 is_stmt 1 view .LVU44
+ 116:Core/Src/os-user.c **** 	}else {
+ 148              		.loc 1 116 31 is_stmt 0 view .LVU45
+ 149 0018 0323     		movs	r3, #3
+ 150 001a 0370     		strb	r3, [r0]
+ 151 001c 7047     		bx	lr
+ 152              	.LVL10:
+ 153              	.L12:
+ 154              	.LBB4:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 6
+
+
+ 155              		.loc 1 120 55 is_stmt 1 view .LVU46
+ 156 001e 1B69     		ldr	r3, [r3, #16]
+ 157              	.LVL11:
+ 158              	.L11:
+ 159              		.loc 1 120 33 discriminator 1 view .LVU47
+ 160              		.loc 1 120 22 is_stmt 0 discriminator 1 view .LVU48
+ 161 0020 1A69     		ldr	r2, [r3, #16]
+ 162              		.loc 1 120 33 discriminator 1 view .LVU49
+ 163 0022 42B1     		cbz	r2, .L15
+ 121:Core/Src/os-user.c **** 			if (previousTask->nextTask == taskHandle) {
+ 164              		.loc 1 121 4 is_stmt 1 view .LVU50
+ 165              		.loc 1 121 7 is_stmt 0 view .LVU51
+ 166 0024 8242     		cmp	r2, r0
+ 167 0026 FAD1     		bne	.L12
+ 122:Core/Src/os-user.c **** 				// 把要删除任务前一个任务的nextTask设为要删除任务的nextTask
+ 123:Core/Src/os-user.c **** 				previousTask->nextTask = taskHandle->nextTask;
+ 168              		.loc 1 123 5 is_stmt 1 view .LVU52
+ 169              		.loc 1 123 40 is_stmt 0 view .LVU53
+ 170 0028 0269     		ldr	r2, [r0, #16]
+ 171              		.loc 1 123 28 view .LVU54
+ 172 002a 1A61     		str	r2, [r3, #16]
+ 124:Core/Src/os-user.c **** 				// 对要删除任务的状态等做相应的更新
+ 125:Core/Src/os-user.c **** 				taskHandle->nextTask = NULL;
+ 173              		.loc 1 125 5 is_stmt 1 view .LVU55
+ 174              		.loc 1 125 26 is_stmt 0 view .LVU56
+ 175 002c 0022     		movs	r2, #0
+ 176 002e 0261     		str	r2, [r0, #16]
+ 126:Core/Src/os-user.c **** 				taskHandle->taskInfo.status = TASK_DEL;
+ 177              		.loc 1 126 5 is_stmt 1 view .LVU57
+ 178              		.loc 1 126 33 is_stmt 0 view .LVU58
+ 179 0030 0322     		movs	r2, #3
+ 180 0032 0270     		strb	r2, [r0]
+ 181 0034 F3E7     		b	.L12
+ 182              	.L15:
+ 183              		.loc 1 126 33 view .LVU59
+ 184              	.LBE4:
+ 127:Core/Src/os-user.c **** 			}
+ 128:Core/Src/os-user.c **** 		}
+ 129:Core/Src/os-user.c **** 	}
+ 130:Core/Src/os-user.c **** }
+ 185              		.loc 1 130 1 view .LVU60
+ 186 0036 7047     		bx	lr
+ 187              	.L17:
+ 188              		.align	2
+ 189              	.L16:
+ 190 0038 00000000 		.word	.LANCHOR0
+ 191              		.cfi_endproc
+ 192              	.LFE66:
+ 194              		.section	.text.TaskStatusUpdate,"ax",%progbits
+ 195              		.align	1
+ 196              		.global	TaskStatusUpdate
+ 197              		.syntax unified
+ 198              		.thumb
+ 199              		.thumb_func
+ 201              	TaskStatusUpdate:
+ 202              	.LFB67:
+ 131:Core/Src/os-user.c **** 
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 7
+
+
+ 132:Core/Src/os-user.c ****  /**
+ 133:Core/Src/os-user.c ****   * @brief  每次调用时更新链表中每个任务的状态
+ 134:Core/Src/os-user.c ****   * @param  无
+ 135:Core/Src/os-user.c ****   * @retval 无
+ 136:Core/Src/os-user.c ****   * @author ride_pig
+ 137:Core/Src/os-user.c ****   */
+ 138:Core/Src/os-user.c **** void TaskStatusUpdate(void)
+ 139:Core/Src/os-user.c **** {	
+ 203              		.loc 1 139 1 is_stmt 1 view -0
+ 204              		.cfi_startproc
+ 205              		@ args = 0, pretend = 0, frame = 0
+ 206              		@ frame_needed = 0, uses_anonymous_args = 0
+ 207              		@ link register save eliminated.
+ 140:Core/Src/os-user.c **** 	// 利用任务管理器中储存的链表头信息遍历整个链表
+ 141:Core/Src/os-user.c **** 	Task *taskPointer = taskManager.taskHead;
+ 208              		.loc 1 141 2 view .LVU62
+ 209              		.loc 1 141 8 is_stmt 0 view .LVU63
+ 210 0000 0A4B     		ldr	r3, .L23
+ 211 0002 5B68     		ldr	r3, [r3, #4]
+ 212              	.LVL12:
+ 142:Core/Src/os-user.c **** 	for (; taskPointer->nextTask != NULL; taskPointer = taskPointer->nextTask) {
+ 213              		.loc 1 142 2 is_stmt 1 view .LVU64
+ 214 0004 00E0     		b	.L19
+ 215              	.L20:
+ 139:Core/Src/os-user.c **** 	// 利用任务管理器中储存的链表头信息遍历整个链表
+ 216              		.loc 1 139 1 is_stmt 0 discriminator 1 view .LVU65
+ 217 0006 0B46     		mov	r3, r1
+ 218              	.LVL13:
+ 219              	.L19:
+ 220              		.loc 1 142 31 is_stmt 1 discriminator 1 view .LVU66
+ 221              		.loc 1 142 20 is_stmt 0 discriminator 1 view .LVU67
+ 222 0008 1969     		ldr	r1, [r3, #16]
+ 223              		.loc 1 142 31 discriminator 1 view .LVU68
+ 224 000a 69B1     		cbz	r1, .L22
+ 143:Core/Src/os-user.c **** 		if (taskPointer->taskInfo.status == TASK_IDLE) {
+ 225              		.loc 1 143 3 is_stmt 1 view .LVU69
+ 226              		.loc 1 143 28 is_stmt 0 view .LVU70
+ 227 000c 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+ 228              		.loc 1 143 6 view .LVU71
+ 229 000e 002A     		cmp	r2, #0
+ 230 0010 F9D1     		bne	.L20
+ 144:Core/Src/os-user.c **** 			// 使用自减运算符在前的形式，相比自减运算符在后的形式更加节省时间
+ 145:Core/Src/os-user.c **** 			--taskPointer->taskInfo.timer;
+ 231              		.loc 1 145 4 is_stmt 1 view .LVU72
+ 232              		.loc 1 145 27 is_stmt 0 view .LVU73
+ 233 0012 5A88     		ldrh	r2, [r3, #2]
+ 234              		.loc 1 145 4 view .LVU74
+ 235 0014 013A     		subs	r2, r2, #1
+ 236 0016 92B2     		uxth	r2, r2
+ 237 0018 5A80     		strh	r2, [r3, #2]	@ movhi
+ 146:Core/Src/os-user.c **** 			// 若是timer减到0，那么任务进入就绪状态（可以运行了）
+ 147:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.timer==0) {
+ 238              		.loc 1 147 4 is_stmt 1 view .LVU75
+ 239              		.loc 1 147 7 is_stmt 0 view .LVU76
+ 240 001a 002A     		cmp	r2, #0
+ 241 001c F3D1     		bne	.L20
+ 148:Core/Src/os-user.c **** 				taskPointer->taskInfo.timer = taskPointer->taskInfo.itvTime;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 8
+
+
+ 242              		.loc 1 148 5 is_stmt 1 view .LVU77
+ 243              		.loc 1 148 56 is_stmt 0 view .LVU78
+ 244 001e 9A88     		ldrh	r2, [r3, #4]
+ 245              		.loc 1 148 33 view .LVU79
+ 246 0020 5A80     		strh	r2, [r3, #2]	@ movhi
+ 149:Core/Src/os-user.c **** 				taskPointer->taskInfo.status = TASK_READY;
+ 247              		.loc 1 149 5 is_stmt 1 view .LVU80
+ 248              		.loc 1 149 34 is_stmt 0 view .LVU81
+ 249 0022 0222     		movs	r2, #2
+ 250 0024 1A70     		strb	r2, [r3]
+ 251 0026 EEE7     		b	.L20
+ 252              	.L22:
+ 150:Core/Src/os-user.c **** 			}
+ 151:Core/Src/os-user.c **** 		}
+ 152:Core/Src/os-user.c **** 	}
+ 153:Core/Src/os-user.c **** }
+ 253              		.loc 1 153 1 view .LVU82
+ 254 0028 7047     		bx	lr
+ 255              	.L24:
+ 256 002a 00BF     		.align	2
+ 257              	.L23:
+ 258 002c 00000000 		.word	.LANCHOR0
+ 259              		.cfi_endproc
+ 260              	.LFE67:
+ 262              		.section	.text.TaskScheduler,"ax",%progbits
+ 263              		.align	1
+ 264              		.global	TaskScheduler
+ 265              		.syntax unified
+ 266              		.thumb
+ 267              		.thumb_func
+ 269              	TaskScheduler:
+ 270              	.LFB68:
+ 154:Core/Src/os-user.c **** 
+ 155:Core/Src/os-user.c ****  /**
+ 156:Core/Src/os-user.c ****   * @brief  任务调度器，跑在main.c的主循环中，按照任务创建的先后来依次运
+ 157:Core/Src/os-user.c **** 			先进入链表的任务，也即先创建的任务，拥有更高的优先级
+ 158:Core/Src/os-user.c ****   * @param  无
+ 159:Core/Src/os-user.c ****   * @retval 无
+ 160:Core/Src/os-user.c ****   * @author ride_pig
+ 161:Core/Src/os-user.c ****   */
+ 162:Core/Src/os-user.c **** void TaskScheduler(void)
+ 163:Core/Src/os-user.c **** {
+ 271              		.loc 1 163 1 is_stmt 1 view -0
+ 272              		.cfi_startproc
+ 273              		@ args = 0, pretend = 0, frame = 0
+ 274              		@ frame_needed = 0, uses_anonymous_args = 0
+ 275 0000 38B5     		push	{r3, r4, r5, lr}
+ 276              	.LCFI0:
+ 277              		.cfi_def_cfa_offset 16
+ 278              		.cfi_offset 3, -16
+ 279              		.cfi_offset 4, -12
+ 280              		.cfi_offset 5, -8
+ 281              		.cfi_offset 14, -4
+ 164:Core/Src/os-user.c **** 	Task *taskPointer  = taskManager.taskHead;
+ 282              		.loc 1 164 2 view .LVU84
+ 283              		.loc 1 164 8 is_stmt 0 view .LVU85
+ 284 0002 0B4B     		ldr	r3, .L31
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 9
+
+
+ 285 0004 5C68     		ldr	r4, [r3, #4]
+ 286              	.LVL14:
+ 165:Core/Src/os-user.c **** 	for (; taskPointer->nextTask != NULL; taskPointer = taskPointer->nextTask) {
+ 287              		.loc 1 165 2 is_stmt 1 view .LVU86
+ 288 0006 00E0     		b	.L26
+ 289              	.L27:
+ 290              		.loc 1 165 52 view .LVU87
+ 291 0008 2469     		ldr	r4, [r4, #16]
+ 292              	.LVL15:
+ 293              	.L26:
+ 294              		.loc 1 165 31 discriminator 1 view .LVU88
+ 295              		.loc 1 165 20 is_stmt 0 discriminator 1 view .LVU89
+ 296 000a 2369     		ldr	r3, [r4, #16]
+ 297              		.loc 1 165 31 discriminator 1 view .LVU90
+ 298 000c 73B1     		cbz	r3, .L30
+ 166:Core/Src/os-user.c **** 		taskPointer->taskInfo.status = TASK_RUNNING;
+ 299              		.loc 1 166 3 is_stmt 1 view .LVU91
+ 300              		.loc 1 166 32 is_stmt 0 view .LVU92
+ 301 000e 0123     		movs	r3, #1
+ 302 0010 2370     		strb	r3, [r4]
+ 167:Core/Src/os-user.c **** 		taskManager.taskNow = taskPointer;
+ 303              		.loc 1 167 3 is_stmt 1 view .LVU93
+ 304              		.loc 1 167 23 is_stmt 0 view .LVU94
+ 305 0012 074D     		ldr	r5, .L31
+ 306 0014 2C60     		str	r4, [r5]
+ 168:Core/Src/os-user.c **** 		taskPointer->taskInfo.Task_Function(taskPointer->taskInfo.parameter);
+ 307              		.loc 1 168 3 is_stmt 1 view .LVU95
+ 308              		.loc 1 168 24 is_stmt 0 view .LVU96
+ 309 0016 A368     		ldr	r3, [r4, #8]
+ 310              		.loc 1 168 3 view .LVU97
+ 311 0018 E068     		ldr	r0, [r4, #12]
+ 312 001a 9847     		blx	r3
+ 313              	.LVL16:
+ 169:Core/Src/os-user.c **** 		// 运行到这里，说明上一句调用的任务运行结束了，对任务管理器以及被�
+ 170:Core/Src/os-user.c **** 		taskManager.taskNow = NULL;
+ 314              		.loc 1 170 3 is_stmt 1 view .LVU98
+ 315              		.loc 1 170 23 is_stmt 0 view .LVU99
+ 316 001c 0023     		movs	r3, #0
+ 317 001e 2B60     		str	r3, [r5]
+ 171:Core/Src/os-user.c **** 		// 如果运行到这里的时候任务的状态已经是TASK_DEL，那么就不再对任务的�
+ 172:Core/Src/os-user.c **** 		if (taskPointer->taskInfo.status == TASK_RUNNING) {
+ 318              		.loc 1 172 3 is_stmt 1 view .LVU100
+ 319              		.loc 1 172 28 is_stmt 0 view .LVU101
+ 320 0020 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 321              		.loc 1 172 6 view .LVU102
+ 322 0022 012B     		cmp	r3, #1
+ 323 0024 F0D1     		bne	.L27
+ 173:Core/Src/os-user.c **** 			taskPointer->taskInfo.status = TASK_IDLE;
+ 324              		.loc 1 173 4 is_stmt 1 view .LVU103
+ 325              		.loc 1 173 33 is_stmt 0 view .LVU104
+ 326 0026 0023     		movs	r3, #0
+ 327 0028 2370     		strb	r3, [r4]
+ 328 002a EDE7     		b	.L27
+ 329              	.L30:
+ 174:Core/Src/os-user.c **** 		}
+ 175:Core/Src/os-user.c **** 	}
+ 176:Core/Src/os-user.c **** }
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 10
+
+
+ 330              		.loc 1 176 1 view .LVU105
+ 331 002c 38BD     		pop	{r3, r4, r5, pc}
+ 332              	.LVL17:
+ 333              	.L32:
+ 334              		.loc 1 176 1 view .LVU106
+ 335 002e 00BF     		.align	2
+ 336              	.L31:
+ 337 0030 00000000 		.word	.LANCHOR0
+ 338              		.cfi_endproc
+ 339              	.LFE68:
+ 341              		.global	__aeabi_f2uiz
+ 342              		.global	__aeabi_i2d
+ 343              		.global	__aeabi_dmul
+ 344              		.global	__aeabi_ddiv
+ 345              		.global	__aeabi_dcmpgt
+ 346              		.section	.text.Precharge_Run,"ax",%progbits
+ 347              		.align	1
+ 348              		.global	Precharge_Run
+ 349              		.syntax unified
+ 350              		.thumb
+ 351              		.thumb_func
+ 353              	Precharge_Run:
+ 354              	.LVL18:
+ 355              	.LFB69:
+ 177:Core/Src/os-user.c **** 
+ 178:Core/Src/os-user.c **** /*	task0
+ 179:Core/Src/os-user.c ****  * 	预充判断完成函数, 当从standby状态跳到precharge状态后, 任务的计数值将被
+ 180:Core/Src/os-user.c ****  * 	到点了就跑到这个函数上面来, 来判断预充是否成功
+ 181:Core/Src/os-user.c ****  * */
+ 182:Core/Src/os-user.c **** void Precharge_Run(void *parameterNull){
+ 356              		.loc 1 182 40 is_stmt 1 view -0
+ 357              		.cfi_startproc
+ 358              		@ args = 0, pretend = 0, frame = 0
+ 359              		@ frame_needed = 0, uses_anonymous_args = 0
+ 183:Core/Src/os-user.c **** 	//虽然很长时间才跑进来一次, 但是要判断到底是不是预充状态
+ 184:Core/Src/os-user.c **** 	if(E03.State.BMS_State==BMS_PRECHARGE){
+ 360              		.loc 1 184 2 view .LVU108
+ 361              		.loc 1 184 14 is_stmt 0 view .LVU109
+ 362 0000 A74B     		ldr	r3, .L107
+ 363 0002 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 364 0004 DBB2     		uxtb	r3, r3
+ 365              		.loc 1 184 4 view .LVU110
+ 366 0006 042B     		cmp	r3, #4
+ 367 0008 02D0     		beq	.L94
+ 368              	.LBB5:
+ 185:Core/Src/os-user.c **** 		E03.State.TotalVoltage=TS_Voltage();
+ 186:Core/Src/os-user.c **** 		E03.State.PrechargeVoltage=PRE_Voltage();
+ 187:Core/Src/os-user.c **** 		if(E03.Alarm.error_mute&Precharge_Fail_mute) //按下预充失败屏蔽后强上
+ 188:Core/Src/os-user.c **** 		{
+ 189:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 190:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 191:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 192:Core/Src/os-user.c **** 				}
+ 193:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 194:Core/Src/os-user.c **** 					AIRN_ON();
+ 195:Core/Src/os-user.c **** 				}
+ 196:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 11
+
+
+ 197:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 198:Core/Src/os-user.c **** 				}
+ 199:Core/Src/os-user.c **** 				HAL_Delay(100);
+ 200:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 201:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 202:Core/Src/os-user.c **** 				}
+ 203:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 204:Core/Src/os-user.c **** 					AIRN_ON();
+ 205:Core/Src/os-user.c **** 				}
+ 206:Core/Src/os-user.c **** 				if(Charge_detect()&&(E03.Alarm.Chargemachine_Error==0)){	//主要是进行继电器状态的检
+ 207:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 208:Core/Src/os-user.c **** 				}
+ 209:Core/Src/os-user.c **** 			}
+ 210:Core/Src/os-user.c **** 			else{	//此时上车了, 属于(Run)放电状态, charge_flag==0
+ 211:Core/Src/os-user.c **** //				Run_relay_open();	//进行Run下的继电器打开或关闭
+ 212:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 213:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 214:Core/Src/os-user.c **** 				}
+ 215:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 216:Core/Src/os-user.c **** 					AIRN_ON();
+ 217:Core/Src/os-user.c **** 				}
+ 218:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 219:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 220:Core/Src/os-user.c **** 				}
+ 221:Core/Src/os-user.c **** 				HAL_Delay(100);
+ 222:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 223:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 224:Core/Src/os-user.c **** 				}
+ 225:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 226:Core/Src/os-user.c **** 					AIRN_ON();
+ 227:Core/Src/os-user.c **** 				}
+ 228:Core/Src/os-user.c **** 				if(Run_detect()){	//主要是进行继电器状态的检测, 如有问题会报错, 无问题�
+ 229:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 230:Core/Src/os-user.c **** 				}
+ 231:Core/Src/os-user.c **** 			}
+ 232:Core/Src/os-user.c **** 		}
+ 233:Core/Src/os-user.c **** 		else if((100.0*E03.State.PrechargeVoltage/E03.State.TotalVoltage)>E03.Threshold.Precharge_End_Vol
+ 234:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 235:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 236:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 237:Core/Src/os-user.c **** 					AIRN_ON();
+ 238:Core/Src/os-user.c **** 					PrechargeAIR_OFF();
+ 239:Core/Src/os-user.c **** 				}
+ 240:Core/Src/os-user.c **** 				HAL_Delay(100);
+ 241:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 242:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 243:Core/Src/os-user.c **** 				}
+ 244:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 245:Core/Src/os-user.c **** 					AIRN_ON();
+ 246:Core/Src/os-user.c **** 				}
+ 247:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 248:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 249:Core/Src/os-user.c **** 				}
+ 250:Core/Src/os-user.c **** 				HAL_Delay(100);
+ 251:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 252:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 253:Core/Src/os-user.c **** 				}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 12
+
+
+ 254:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 255:Core/Src/os-user.c **** 					AIRN_ON();
+ 256:Core/Src/os-user.c **** 				}
+ 257:Core/Src/os-user.c **** 				if(Charge_detect()&&(E03.Alarm.Chargemachine_Error==0)){	//主要是进行继电器状态的检
+ 258:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 259:Core/Src/os-user.c **** 				}
+ 260:Core/Src/os-user.c **** 			}
+ 261:Core/Src/os-user.c **** 			else{	//此时上车了, 属于(Run)放电状态, charge_flag==0
+ 262:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 263:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 264:Core/Src/os-user.c **** 					AIRN_ON();
+ 265:Core/Src/os-user.c **** 					PrechargeAIR_OFF();
+ 266:Core/Src/os-user.c **** 				}
+ 267:Core/Src/os-user.c **** 				HAL_Delay(100);
+ 268:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 269:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 270:Core/Src/os-user.c **** 				}
+ 271:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 272:Core/Src/os-user.c **** 					AIRN_ON();
+ 273:Core/Src/os-user.c **** 				}
+ 274:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 275:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 276:Core/Src/os-user.c **** 				}
+ 277:Core/Src/os-user.c **** 				HAL_Delay(100);
+ 278:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 279:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 280:Core/Src/os-user.c **** 				}
+ 281:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 282:Core/Src/os-user.c **** 					AIRN_ON();
+ 283:Core/Src/os-user.c **** 				}
+ 284:Core/Src/os-user.c **** 				if(Run_detect()){	//主要是进行继电器状态的检测, 如有问题会报错, 无问题�
+ 285:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 286:Core/Src/os-user.c **** 				}
+ 287:Core/Src/os-user.c **** 			}
+ 288:Core/Src/os-user.c **** 		}
+ 289:Core/Src/os-user.c **** 		else{	//预充达不到阈值, 报故障
+ 290:Core/Src/os-user.c **** 			E03.Alarm.Precharge_Fail = 1;						//预充失败告警
+ 291:Core/Src/os-user.c **** 			if(!(E03.Alarm.error_mute&Precharge_Fail_mute)){	//屏蔽位判断,如果没有设置屏蔽位�
+ 292:Core/Src/os-user.c **** 				Error();										//输出故障信号-关闭继电器-修改状态为error
+ 293:Core/Src/os-user.c **** 			}
+ 294:Core/Src/os-user.c **** 		}
+ 295:Core/Src/os-user.c **** 	}
+ 296:Core/Src/os-user.c **** 	else{
+ 297:Core/Src/os-user.c **** 		// BMS_Tasks[Pre_NO].ItvTime=0xFFFF;	//此时还不是预充状态, 所以关闭预充计时, 可
+ 298:Core/Src/os-user.c **** 		Task *taskPointer = taskManager.taskHead;
+ 369              		.loc 1 298 3 is_stmt 1 view .LVU111
+ 370              		.loc 1 298 9 is_stmt 0 view .LVU112
+ 371 000a A64B     		ldr	r3, .L107+4
+ 372 000c 5B68     		ldr	r3, [r3, #4]
+ 373              	.LVL19:
+ 299:Core/Src/os-user.c **** 		//此时还不是预充状态, 所以关闭预充计时, 可以理解为将值调的特别大就�
+ 300:Core/Src/os-user.c **** 		for (; taskPointer->nextTask != NULL; taskPointer = taskPointer->nextTask) {
+ 374              		.loc 1 300 3 is_stmt 1 view .LVU113
+ 375 000e 3AE1     		b	.L83
+ 376              	.LVL20:
+ 377              	.L94:
+ 378              		.loc 1 300 3 is_stmt 0 view .LVU114
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 13
+
+
+ 379              	.LBE5:
+ 182:Core/Src/os-user.c **** 	//虽然很长时间才跑进来一次, 但是要判断到底是不是预充状态
+ 380              		.loc 1 182 40 view .LVU115
+ 381 0010 70B5     		push	{r4, r5, r6, lr}
+ 382              	.LCFI1:
+ 383              		.cfi_def_cfa_offset 16
+ 384              		.cfi_offset 4, -16
+ 385              		.cfi_offset 5, -12
+ 386              		.cfi_offset 6, -8
+ 387              		.cfi_offset 14, -4
+ 185:Core/Src/os-user.c **** 		E03.State.TotalVoltage=TS_Voltage();
+ 388              		.loc 1 185 3 is_stmt 1 view .LVU116
+ 185:Core/Src/os-user.c **** 		E03.State.TotalVoltage=TS_Voltage();
+ 389              		.loc 1 185 26 is_stmt 0 view .LVU117
+ 390 0012 FFF7FEFF 		bl	TS_Voltage
+ 391              	.LVL21:
+ 185:Core/Src/os-user.c **** 		E03.State.TotalVoltage=TS_Voltage();
+ 392              		.loc 1 185 25 view .LVU118
+ 393 0016 FFF7FEFF 		bl	__aeabi_f2uiz
+ 394              	.LVL22:
+ 395 001a 80B2     		uxth	r0, r0
+ 396 001c A04C     		ldr	r4, .L107
+ 397 001e E080     		strh	r0, [r4, #6]	@ movhi
+ 186:Core/Src/os-user.c **** 		if(E03.Alarm.error_mute&Precharge_Fail_mute) //按下预充失败屏蔽后强上
+ 398              		.loc 1 186 3 is_stmt 1 view .LVU119
+ 186:Core/Src/os-user.c **** 		if(E03.Alarm.error_mute&Precharge_Fail_mute) //按下预充失败屏蔽后强上
+ 399              		.loc 1 186 30 is_stmt 0 view .LVU120
+ 400 0020 FFF7FEFF 		bl	PRE_Voltage
+ 401              	.LVL23:
+ 186:Core/Src/os-user.c **** 		if(E03.Alarm.error_mute&Precharge_Fail_mute) //按下预充失败屏蔽后强上
+ 402              		.loc 1 186 29 view .LVU121
+ 403 0024 FFF7FEFF 		bl	__aeabi_f2uiz
+ 404              	.LVL24:
+ 405 0028 80B2     		uxth	r0, r0
+ 406 002a 2081     		strh	r0, [r4, #8]	@ movhi
+ 187:Core/Src/os-user.c **** 		{
+ 407              		.loc 1 187 3 is_stmt 1 view .LVU122
+ 187:Core/Src/os-user.c **** 		{
+ 408              		.loc 1 187 15 is_stmt 0 view .LVU123
+ 409 002c D4F84031 		ldr	r3, [r4, #320]
+ 187:Core/Src/os-user.c **** 		{
+ 410              		.loc 1 187 5 view .LVU124
+ 411 0030 13F4004F 		tst	r3, #32768
+ 412 0034 70D0     		beq	.L35
+ 189:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 413              		.loc 1 189 4 is_stmt 1 view .LVU125
+ 189:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 414              		.loc 1 189 16 is_stmt 0 view .LVU126
+ 415 0036 237C     		ldrb	r3, [r4, #16]	@ zero_extendqisi2
+ 189:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 416              		.loc 1 189 6 view .LVU127
+ 417 0038 03F0FF04 		and	r4, r3, #255
+ 418 003c 4BB9     		cbnz	r3, .L86
+ 419              	.LBB6:
+ 212:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 420              		.loc 1 212 12 view .LVU128
+ 421 003e 2546     		mov	r5, r4
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 14
+
+
+ 422 0040 3DE0     		b	.L37
+ 423              	.LVL25:
+ 424              	.L38:
+ 212:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 425              		.loc 1 212 12 view .LVU129
+ 426              	.LBE6:
+ 427              	.LBB7:
+ 191:Core/Src/os-user.c **** 				}
+ 428              		.loc 1 191 6 is_stmt 1 discriminator 3 view .LVU130
+ 429 0042 FFF7FEFF 		bl	AIRP_ON
+ 430              	.LVL26:
+ 190:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 431              		.loc 1 190 25 discriminator 3 view .LVU131
+ 432 0046 0134     		adds	r4, r4, #1
+ 433              	.LVL27:
+ 190:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 434              		.loc 1 190 25 is_stmt 0 discriminator 3 view .LVU132
+ 435 0048 E4B2     		uxtb	r4, r4
+ 436              	.LVL28:
+ 437              	.L36:
+ 190:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 438              		.loc 1 190 18 is_stmt 1 discriminator 1 view .LVU133
+ 439 004a 632C     		cmp	r4, #99
+ 440 004c F9D9     		bls	.L38
+ 441              	.LBE7:
+ 442              	.LBB8:
+ 193:Core/Src/os-user.c **** 					AIRN_ON();
+ 443              		.loc 1 193 12 is_stmt 0 view .LVU134
+ 444 004e 0024     		movs	r4, #0
+ 445              	.LVL29:
+ 193:Core/Src/os-user.c **** 					AIRN_ON();
+ 446              		.loc 1 193 12 view .LVU135
+ 447 0050 05E0     		b	.L39
+ 448              	.L86:
+ 193:Core/Src/os-user.c **** 					AIRN_ON();
+ 449              		.loc 1 193 12 view .LVU136
+ 450              	.LBE8:
+ 451              	.LBB9:
+ 190:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 452              		.loc 1 190 12 view .LVU137
+ 453 0052 0024     		movs	r4, #0
+ 454 0054 F9E7     		b	.L36
+ 455              	.LVL30:
+ 456              	.L40:
+ 190:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 457              		.loc 1 190 12 view .LVU138
+ 458              	.LBE9:
+ 459              	.LBB10:
+ 194:Core/Src/os-user.c **** 				}
+ 460              		.loc 1 194 6 is_stmt 1 discriminator 3 view .LVU139
+ 461 0056 FFF7FEFF 		bl	AIRN_ON
+ 462              	.LVL31:
+ 193:Core/Src/os-user.c **** 					AIRN_ON();
+ 463              		.loc 1 193 25 discriminator 3 view .LVU140
+ 464 005a 0134     		adds	r4, r4, #1
+ 465              	.LVL32:
+ 193:Core/Src/os-user.c **** 					AIRN_ON();
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 15
+
+
+ 466              		.loc 1 193 25 is_stmt 0 discriminator 3 view .LVU141
+ 467 005c E4B2     		uxtb	r4, r4
+ 468              	.LVL33:
+ 469              	.L39:
+ 193:Core/Src/os-user.c **** 					AIRN_ON();
+ 470              		.loc 1 193 18 is_stmt 1 discriminator 1 view .LVU142
+ 471 005e 632C     		cmp	r4, #99
+ 472 0060 F9D9     		bls	.L40
+ 473              	.LBE10:
+ 474              	.LBB11:
+ 196:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 475              		.loc 1 196 12 is_stmt 0 view .LVU143
+ 476 0062 0024     		movs	r4, #0
+ 477              	.LVL34:
+ 196:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 478              		.loc 1 196 12 view .LVU144
+ 479 0064 03E0     		b	.L41
+ 480              	.LVL35:
+ 481              	.L42:
+ 197:Core/Src/os-user.c **** 				}
+ 482              		.loc 1 197 6 is_stmt 1 discriminator 3 view .LVU145
+ 483 0066 FFF7FEFF 		bl	PrechargeAIR_OFF
+ 484              	.LVL36:
+ 196:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 485              		.loc 1 196 25 discriminator 3 view .LVU146
+ 486 006a 0134     		adds	r4, r4, #1
+ 487              	.LVL37:
+ 196:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 488              		.loc 1 196 25 is_stmt 0 discriminator 3 view .LVU147
+ 489 006c E4B2     		uxtb	r4, r4
+ 490              	.LVL38:
+ 491              	.L41:
+ 196:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 492              		.loc 1 196 18 is_stmt 1 discriminator 1 view .LVU148
+ 493 006e 632C     		cmp	r4, #99
+ 494 0070 F9D9     		bls	.L42
+ 495              	.LBE11:
+ 199:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 496              		.loc 1 199 5 view .LVU149
+ 497 0072 6420     		movs	r0, #100
+ 498 0074 FFF7FEFF 		bl	HAL_Delay
+ 499              	.LVL39:
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 500              		.loc 1 200 5 view .LVU150
+ 501              	.LBB12:
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 502              		.loc 1 200 9 view .LVU151
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 503              		.loc 1 200 12 is_stmt 0 view .LVU152
+ 504 0078 0024     		movs	r4, #0
+ 505              	.LVL40:
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 506              		.loc 1 200 5 view .LVU153
+ 507 007a 03E0     		b	.L43
+ 508              	.LVL41:
+ 509              	.L44:
+ 201:Core/Src/os-user.c **** 				}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 16
+
+
+ 510              		.loc 1 201 6 is_stmt 1 discriminator 3 view .LVU154
+ 511 007c FFF7FEFF 		bl	AIRP_ON
+ 512              	.LVL42:
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 513              		.loc 1 200 25 discriminator 3 view .LVU155
+ 514 0080 0134     		adds	r4, r4, #1
+ 515              	.LVL43:
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 516              		.loc 1 200 25 is_stmt 0 discriminator 3 view .LVU156
+ 517 0082 E4B2     		uxtb	r4, r4
+ 518              	.LVL44:
+ 519              	.L43:
+ 200:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 520              		.loc 1 200 18 is_stmt 1 discriminator 1 view .LVU157
+ 521 0084 632C     		cmp	r4, #99
+ 522 0086 F9D9     		bls	.L44
+ 523              	.LBE12:
+ 524              	.LBB13:
+ 203:Core/Src/os-user.c **** 					AIRN_ON();
+ 525              		.loc 1 203 12 is_stmt 0 view .LVU158
+ 526 0088 0024     		movs	r4, #0
+ 527              	.LVL45:
+ 203:Core/Src/os-user.c **** 					AIRN_ON();
+ 528              		.loc 1 203 12 view .LVU159
+ 529 008a 03E0     		b	.L45
+ 530              	.LVL46:
+ 531              	.L46:
+ 204:Core/Src/os-user.c **** 				}
+ 532              		.loc 1 204 6 is_stmt 1 discriminator 3 view .LVU160
+ 533 008c FFF7FEFF 		bl	AIRN_ON
+ 534              	.LVL47:
+ 203:Core/Src/os-user.c **** 					AIRN_ON();
+ 535              		.loc 1 203 25 discriminator 3 view .LVU161
+ 536 0090 0134     		adds	r4, r4, #1
+ 537              	.LVL48:
+ 203:Core/Src/os-user.c **** 					AIRN_ON();
+ 538              		.loc 1 203 25 is_stmt 0 discriminator 3 view .LVU162
+ 539 0092 E4B2     		uxtb	r4, r4
+ 540              	.LVL49:
+ 541              	.L45:
+ 203:Core/Src/os-user.c **** 					AIRN_ON();
+ 542              		.loc 1 203 18 is_stmt 1 discriminator 1 view .LVU163
+ 543 0094 632C     		cmp	r4, #99
+ 544 0096 F9D9     		bls	.L46
+ 545              	.LBE13:
+ 206:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 546              		.loc 1 206 5 view .LVU164
+ 206:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 547              		.loc 1 206 8 is_stmt 0 view .LVU165
+ 548 0098 FFF7FEFF 		bl	Charge_detect
+ 549              	.LVL50:
+ 206:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 550              		.loc 1 206 7 view .LVU166
+ 551 009c 0028     		cmp	r0, #0
+ 552 009e 00F0F080 		beq	.L33
+ 206:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 553              		.loc 1 206 35 discriminator 1 view .LVU167
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 17
+
+
+ 554 00a2 7F4B     		ldr	r3, .L107
+ 555 00a4 93F84E31 		ldrb	r3, [r3, #334]	@ zero_extendqisi2
+ 206:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 556              		.loc 1 206 23 discriminator 1 view .LVU168
+ 557 00a8 002B     		cmp	r3, #0
+ 558 00aa 40F0EA80 		bne	.L33
+ 207:Core/Src/os-user.c **** 				}
+ 559              		.loc 1 207 6 is_stmt 1 view .LVU169
+ 207:Core/Src/os-user.c **** 				}
+ 560              		.loc 1 207 25 is_stmt 0 view .LVU170
+ 561 00ae 7C4B     		ldr	r3, .L107
+ 562 00b0 0822     		movs	r2, #8
+ 563 00b2 9A73     		strb	r2, [r3, #14]
+ 564 00b4 E5E0     		b	.L33
+ 565              	.LVL51:
+ 566              	.L48:
+ 567              	.LBB14:
+ 213:Core/Src/os-user.c **** 				}
+ 568              		.loc 1 213 6 is_stmt 1 discriminator 3 view .LVU171
+ 569 00b6 FFF7FEFF 		bl	AIRP_ON
+ 570              	.LVL52:
+ 212:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 571              		.loc 1 212 25 discriminator 3 view .LVU172
+ 572 00ba 0135     		adds	r5, r5, #1
+ 573              	.LVL53:
+ 212:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 574              		.loc 1 212 25 is_stmt 0 discriminator 3 view .LVU173
+ 575 00bc EDB2     		uxtb	r5, r5
+ 576              	.LVL54:
+ 577              	.L37:
+ 212:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 578              		.loc 1 212 18 is_stmt 1 discriminator 1 view .LVU174
+ 579 00be 632D     		cmp	r5, #99
+ 580 00c0 F9D9     		bls	.L48
+ 581              	.LBE14:
+ 582              	.LBB15:
+ 215:Core/Src/os-user.c **** 					AIRN_ON();
+ 583              		.loc 1 215 12 is_stmt 0 view .LVU175
+ 584 00c2 2546     		mov	r5, r4
+ 585              	.LVL55:
+ 215:Core/Src/os-user.c **** 					AIRN_ON();
+ 586              		.loc 1 215 12 view .LVU176
+ 587 00c4 03E0     		b	.L49
+ 588              	.LVL56:
+ 589              	.L50:
+ 216:Core/Src/os-user.c **** 				}
+ 590              		.loc 1 216 6 is_stmt 1 discriminator 3 view .LVU177
+ 591 00c6 FFF7FEFF 		bl	AIRN_ON
+ 592              	.LVL57:
+ 215:Core/Src/os-user.c **** 					AIRN_ON();
+ 593              		.loc 1 215 25 discriminator 3 view .LVU178
+ 594 00ca 0135     		adds	r5, r5, #1
+ 595              	.LVL58:
+ 215:Core/Src/os-user.c **** 					AIRN_ON();
+ 596              		.loc 1 215 25 is_stmt 0 discriminator 3 view .LVU179
+ 597 00cc EDB2     		uxtb	r5, r5
+ 598              	.LVL59:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 18
+
+
+ 599              	.L49:
+ 215:Core/Src/os-user.c **** 					AIRN_ON();
+ 600              		.loc 1 215 18 is_stmt 1 discriminator 1 view .LVU180
+ 601 00ce 632D     		cmp	r5, #99
+ 602 00d0 F9D9     		bls	.L50
+ 603              	.LBE15:
+ 604              	.LBB16:
+ 218:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 605              		.loc 1 218 12 is_stmt 0 view .LVU181
+ 606 00d2 2546     		mov	r5, r4
+ 607              	.LVL60:
+ 218:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 608              		.loc 1 218 12 view .LVU182
+ 609 00d4 03E0     		b	.L51
+ 610              	.LVL61:
+ 611              	.L52:
+ 219:Core/Src/os-user.c **** 				}
+ 612              		.loc 1 219 6 is_stmt 1 discriminator 3 view .LVU183
+ 613 00d6 FFF7FEFF 		bl	PrechargeAIR_OFF
+ 614              	.LVL62:
+ 218:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 615              		.loc 1 218 25 discriminator 3 view .LVU184
+ 616 00da 0135     		adds	r5, r5, #1
+ 617              	.LVL63:
+ 218:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 618              		.loc 1 218 25 is_stmt 0 discriminator 3 view .LVU185
+ 619 00dc EDB2     		uxtb	r5, r5
+ 620              	.LVL64:
+ 621              	.L51:
+ 218:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 622              		.loc 1 218 18 is_stmt 1 discriminator 1 view .LVU186
+ 623 00de 632D     		cmp	r5, #99
+ 624 00e0 F9D9     		bls	.L52
+ 625              	.LBE16:
+ 221:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 626              		.loc 1 221 5 view .LVU187
+ 627 00e2 6420     		movs	r0, #100
+ 628 00e4 FFF7FEFF 		bl	HAL_Delay
+ 629              	.LVL65:
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 630              		.loc 1 222 5 view .LVU188
+ 631              	.LBB17:
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 632              		.loc 1 222 9 view .LVU189
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 633              		.loc 1 222 12 is_stmt 0 view .LVU190
+ 634 00e8 2546     		mov	r5, r4
+ 635              	.LVL66:
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 636              		.loc 1 222 5 view .LVU191
+ 637 00ea 03E0     		b	.L53
+ 638              	.LVL67:
+ 639              	.L54:
+ 223:Core/Src/os-user.c **** 				}
+ 640              		.loc 1 223 6 is_stmt 1 discriminator 3 view .LVU192
+ 641 00ec FFF7FEFF 		bl	AIRP_ON
+ 642              	.LVL68:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 19
+
+
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 643              		.loc 1 222 25 discriminator 3 view .LVU193
+ 644 00f0 0135     		adds	r5, r5, #1
+ 645              	.LVL69:
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 646              		.loc 1 222 25 is_stmt 0 discriminator 3 view .LVU194
+ 647 00f2 EDB2     		uxtb	r5, r5
+ 648              	.LVL70:
+ 649              	.L53:
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 650              		.loc 1 222 18 is_stmt 1 discriminator 1 view .LVU195
+ 651 00f4 632D     		cmp	r5, #99
+ 652 00f6 F9D9     		bls	.L54
+ 653 00f8 03E0     		b	.L55
+ 654              	.LVL71:
+ 655              	.L56:
+ 222:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 656              		.loc 1 222 18 is_stmt 0 discriminator 1 view .LVU196
+ 657              	.LBE17:
+ 658              	.LBB18:
+ 226:Core/Src/os-user.c **** 				}
+ 659              		.loc 1 226 6 is_stmt 1 discriminator 3 view .LVU197
+ 660 00fa FFF7FEFF 		bl	AIRN_ON
+ 661              	.LVL72:
+ 225:Core/Src/os-user.c **** 					AIRN_ON();
+ 662              		.loc 1 225 25 discriminator 3 view .LVU198
+ 663 00fe 0134     		adds	r4, r4, #1
+ 664              	.LVL73:
+ 225:Core/Src/os-user.c **** 					AIRN_ON();
+ 665              		.loc 1 225 25 is_stmt 0 discriminator 3 view .LVU199
+ 666 0100 E4B2     		uxtb	r4, r4
+ 667              	.LVL74:
+ 668              	.L55:
+ 225:Core/Src/os-user.c **** 					AIRN_ON();
+ 669              		.loc 1 225 18 is_stmt 1 discriminator 1 view .LVU200
+ 670 0102 632C     		cmp	r4, #99
+ 671 0104 F9D9     		bls	.L56
+ 672              	.LBE18:
+ 228:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 673              		.loc 1 228 5 view .LVU201
+ 228:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 674              		.loc 1 228 8 is_stmt 0 view .LVU202
+ 675 0106 FFF7FEFF 		bl	Run_detect
+ 676              	.LVL75:
+ 228:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 677              		.loc 1 228 7 view .LVU203
+ 678 010a 0028     		cmp	r0, #0
+ 679 010c 00F0B980 		beq	.L33
+ 229:Core/Src/os-user.c **** 				}
+ 680              		.loc 1 229 6 is_stmt 1 view .LVU204
+ 229:Core/Src/os-user.c **** 				}
+ 681              		.loc 1 229 25 is_stmt 0 view .LVU205
+ 682 0110 634B     		ldr	r3, .L107
+ 683 0112 0522     		movs	r2, #5
+ 684 0114 9A73     		strb	r2, [r3, #14]
+ 685 0116 B4E0     		b	.L33
+ 686              	.LVL76:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 20
+
+
+ 687              	.L35:
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 688              		.loc 1 233 8 is_stmt 1 view .LVU206
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 689              		.loc 1 233 27 is_stmt 0 view .LVU207
+ 690 0118 614E     		ldr	r6, .L107
+ 691 011a 3089     		ldrh	r0, [r6, #8]
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 692              		.loc 1 233 17 view .LVU208
+ 693 011c 80B2     		uxth	r0, r0
+ 694 011e FFF7FEFF 		bl	__aeabi_i2d
+ 695              	.LVL77:
+ 696 0122 0022     		movs	r2, #0
+ 697 0124 604B     		ldr	r3, .L107+8
+ 698 0126 FFF7FEFF 		bl	__aeabi_dmul
+ 699              	.LVL78:
+ 700 012a 0446     		mov	r4, r0
+ 701 012c 0D46     		mov	r5, r1
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 702              		.loc 1 233 54 view .LVU209
+ 703 012e F088     		ldrh	r0, [r6, #6]
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 704              		.loc 1 233 44 view .LVU210
+ 705 0130 80B2     		uxth	r0, r0
+ 706 0132 FFF7FEFF 		bl	__aeabi_i2d
+ 707              	.LVL79:
+ 708 0136 0246     		mov	r2, r0
+ 709 0138 0B46     		mov	r3, r1
+ 710 013a 2046     		mov	r0, r4
+ 711 013c 2946     		mov	r1, r5
+ 712 013e FFF7FEFF 		bl	__aeabi_ddiv
+ 713              	.LVL80:
+ 714 0142 0446     		mov	r4, r0
+ 715 0144 0D46     		mov	r5, r1
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 716              		.loc 1 233 82 view .LVU211
+ 717 0146 96F8D601 		ldrb	r0, [r6, #470]	@ zero_extendqisi2
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 718              		.loc 1 233 68 view .LVU212
+ 719 014a FFF7FEFF 		bl	__aeabi_i2d
+ 720              	.LVL81:
+ 721 014e 0246     		mov	r2, r0
+ 722 0150 0B46     		mov	r3, r1
+ 233:Core/Src/os-user.c **** 			if(E03.State.Charge_flag){	//此时是充电状态, charge_flag==1
+ 723              		.loc 1 233 10 view .LVU213
+ 724 0152 2046     		mov	r0, r4
+ 725 0154 2946     		mov	r1, r5
+ 726 0156 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 727              	.LVL82:
+ 728 015a 0028     		cmp	r0, #0
+ 729 015c 00F08B80 		beq	.L89
+ 234:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 730              		.loc 1 234 4 is_stmt 1 view .LVU214
+ 234:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 731              		.loc 1 234 16 is_stmt 0 view .LVU215
+ 732 0160 337C     		ldrb	r3, [r6, #16]	@ zero_extendqisi2
+ 234:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 21
+
+
+ 733              		.loc 1 234 6 view .LVU216
+ 734 0162 03F0FF04 		and	r4, r3, #255
+ 735 0166 5BB9     		cbnz	r3, .L87
+ 736              	.LBB19:
+ 262:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 737              		.loc 1 262 12 view .LVU217
+ 738 0168 2546     		mov	r5, r4
+ 739              	.L60:
+ 740              	.LVL83:
+ 262:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 741              		.loc 1 262 18 is_stmt 1 discriminator 1 view .LVU218
+ 742 016a 632D     		cmp	r5, #99
+ 743 016c 4FD8     		bhi	.L95
+ 263:Core/Src/os-user.c **** 					AIRN_ON();
+ 744              		.loc 1 263 6 discriminator 3 view .LVU219
+ 745 016e FFF7FEFF 		bl	AIRP_ON
+ 746              	.LVL84:
+ 264:Core/Src/os-user.c **** 					PrechargeAIR_OFF();
+ 747              		.loc 1 264 6 discriminator 3 view .LVU220
+ 748 0172 FFF7FEFF 		bl	AIRN_ON
+ 749              	.LVL85:
+ 265:Core/Src/os-user.c **** 				}
+ 750              		.loc 1 265 6 discriminator 3 view .LVU221
+ 751 0176 FFF7FEFF 		bl	PrechargeAIR_OFF
+ 752              	.LVL86:
+ 262:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 753              		.loc 1 262 25 discriminator 3 view .LVU222
+ 754 017a 0135     		adds	r5, r5, #1
+ 755              	.LVL87:
+ 262:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 756              		.loc 1 262 25 is_stmt 0 discriminator 3 view .LVU223
+ 757 017c EDB2     		uxtb	r5, r5
+ 758              	.LVL88:
+ 262:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 759              		.loc 1 262 25 discriminator 3 view .LVU224
+ 760 017e F4E7     		b	.L60
+ 761              	.LVL89:
+ 762              	.L87:
+ 262:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 763              		.loc 1 262 25 discriminator 3 view .LVU225
+ 764              	.LBE19:
+ 765              	.LBB20:
+ 235:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 766              		.loc 1 235 12 view .LVU226
+ 767 0180 0024     		movs	r4, #0
+ 768              	.L59:
+ 769              	.LVL90:
+ 235:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 770              		.loc 1 235 18 is_stmt 1 discriminator 1 view .LVU227
+ 771 0182 632C     		cmp	r4, #99
+ 772 0184 08D8     		bhi	.L96
+ 236:Core/Src/os-user.c **** 					AIRN_ON();
+ 773              		.loc 1 236 6 discriminator 3 view .LVU228
+ 774 0186 FFF7FEFF 		bl	AIRP_ON
+ 775              	.LVL91:
+ 237:Core/Src/os-user.c **** 					PrechargeAIR_OFF();
+ 776              		.loc 1 237 6 discriminator 3 view .LVU229
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 22
+
+
+ 777 018a FFF7FEFF 		bl	AIRN_ON
+ 778              	.LVL92:
+ 238:Core/Src/os-user.c **** 				}
+ 779              		.loc 1 238 6 discriminator 3 view .LVU230
+ 780 018e FFF7FEFF 		bl	PrechargeAIR_OFF
+ 781              	.LVL93:
+ 235:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 782              		.loc 1 235 25 discriminator 3 view .LVU231
+ 783 0192 0134     		adds	r4, r4, #1
+ 784              	.LVL94:
+ 235:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 785              		.loc 1 235 25 is_stmt 0 discriminator 3 view .LVU232
+ 786 0194 E4B2     		uxtb	r4, r4
+ 787              	.LVL95:
+ 235:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 788              		.loc 1 235 25 discriminator 3 view .LVU233
+ 789 0196 F4E7     		b	.L59
+ 790              	.L96:
+ 235:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 791              		.loc 1 235 25 discriminator 3 view .LVU234
+ 792              	.LBE20:
+ 240:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 793              		.loc 1 240 5 is_stmt 1 view .LVU235
+ 794 0198 6420     		movs	r0, #100
+ 795 019a FFF7FEFF 		bl	HAL_Delay
+ 796              	.LVL96:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 797              		.loc 1 241 5 view .LVU236
+ 798              	.LBB21:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 799              		.loc 1 241 9 view .LVU237
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 800              		.loc 1 241 12 is_stmt 0 view .LVU238
+ 801 019e 0024     		movs	r4, #0
+ 802              	.LVL97:
+ 803              	.L62:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 804              		.loc 1 241 18 is_stmt 1 discriminator 1 view .LVU239
+ 805 01a0 632C     		cmp	r4, #99
+ 806 01a2 04D8     		bhi	.L97
+ 242:Core/Src/os-user.c **** 				}
+ 807              		.loc 1 242 6 discriminator 3 view .LVU240
+ 808 01a4 FFF7FEFF 		bl	AIRP_ON
+ 809              	.LVL98:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 810              		.loc 1 241 25 discriminator 3 view .LVU241
+ 811 01a8 0134     		adds	r4, r4, #1
+ 812              	.LVL99:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 813              		.loc 1 241 25 is_stmt 0 discriminator 3 view .LVU242
+ 814 01aa E4B2     		uxtb	r4, r4
+ 815              	.LVL100:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 816              		.loc 1 241 25 discriminator 3 view .LVU243
+ 817 01ac F8E7     		b	.L62
+ 818              	.L97:
+ 241:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 23
+
+
+ 819              		.loc 1 241 25 discriminator 3 view .LVU244
+ 820              	.LBE21:
+ 821              	.LBB22:
+ 244:Core/Src/os-user.c **** 					AIRN_ON();
+ 822              		.loc 1 244 12 view .LVU245
+ 823 01ae 0024     		movs	r4, #0
+ 824              	.LVL101:
+ 825              	.L64:
+ 244:Core/Src/os-user.c **** 					AIRN_ON();
+ 826              		.loc 1 244 18 is_stmt 1 discriminator 1 view .LVU246
+ 827 01b0 632C     		cmp	r4, #99
+ 828 01b2 04D8     		bhi	.L98
+ 245:Core/Src/os-user.c **** 				}
+ 829              		.loc 1 245 6 discriminator 3 view .LVU247
+ 830 01b4 FFF7FEFF 		bl	AIRN_ON
+ 831              	.LVL102:
+ 244:Core/Src/os-user.c **** 					AIRN_ON();
+ 832              		.loc 1 244 25 discriminator 3 view .LVU248
+ 833 01b8 0134     		adds	r4, r4, #1
+ 834              	.LVL103:
+ 244:Core/Src/os-user.c **** 					AIRN_ON();
+ 835              		.loc 1 244 25 is_stmt 0 discriminator 3 view .LVU249
+ 836 01ba E4B2     		uxtb	r4, r4
+ 837              	.LVL104:
+ 244:Core/Src/os-user.c **** 					AIRN_ON();
+ 838              		.loc 1 244 25 discriminator 3 view .LVU250
+ 839 01bc F8E7     		b	.L64
+ 840              	.L98:
+ 244:Core/Src/os-user.c **** 					AIRN_ON();
+ 841              		.loc 1 244 25 discriminator 3 view .LVU251
+ 842              	.LBE22:
+ 843              	.LBB23:
+ 247:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 844              		.loc 1 247 12 view .LVU252
+ 845 01be 0024     		movs	r4, #0
+ 846              	.LVL105:
+ 847              	.L66:
+ 247:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 848              		.loc 1 247 18 is_stmt 1 discriminator 1 view .LVU253
+ 849 01c0 632C     		cmp	r4, #99
+ 850 01c2 04D8     		bhi	.L99
+ 248:Core/Src/os-user.c **** 				}
+ 851              		.loc 1 248 6 discriminator 3 view .LVU254
+ 852 01c4 FFF7FEFF 		bl	PrechargeAIR_OFF
+ 853              	.LVL106:
+ 247:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 854              		.loc 1 247 25 discriminator 3 view .LVU255
+ 855 01c8 0134     		adds	r4, r4, #1
+ 856              	.LVL107:
+ 247:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 857              		.loc 1 247 25 is_stmt 0 discriminator 3 view .LVU256
+ 858 01ca E4B2     		uxtb	r4, r4
+ 859              	.LVL108:
+ 247:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 860              		.loc 1 247 25 discriminator 3 view .LVU257
+ 861 01cc F8E7     		b	.L66
+ 862              	.L99:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 24
+
+
+ 247:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 863              		.loc 1 247 25 discriminator 3 view .LVU258
+ 864              	.LBE23:
+ 250:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 865              		.loc 1 250 5 is_stmt 1 view .LVU259
+ 866 01ce 6420     		movs	r0, #100
+ 867 01d0 FFF7FEFF 		bl	HAL_Delay
+ 868              	.LVL109:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 869              		.loc 1 251 5 view .LVU260
+ 870              	.LBB24:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 871              		.loc 1 251 9 view .LVU261
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 872              		.loc 1 251 12 is_stmt 0 view .LVU262
+ 873 01d4 0024     		movs	r4, #0
+ 874              	.LVL110:
+ 875              	.L68:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 876              		.loc 1 251 18 is_stmt 1 discriminator 1 view .LVU263
+ 877 01d6 632C     		cmp	r4, #99
+ 878 01d8 04D8     		bhi	.L100
+ 252:Core/Src/os-user.c **** 				}
+ 879              		.loc 1 252 6 discriminator 3 view .LVU264
+ 880 01da FFF7FEFF 		bl	AIRP_ON
+ 881              	.LVL111:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 882              		.loc 1 251 25 discriminator 3 view .LVU265
+ 883 01de 0134     		adds	r4, r4, #1
+ 884              	.LVL112:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 885              		.loc 1 251 25 is_stmt 0 discriminator 3 view .LVU266
+ 886 01e0 E4B2     		uxtb	r4, r4
+ 887              	.LVL113:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 888              		.loc 1 251 25 discriminator 3 view .LVU267
+ 889 01e2 F8E7     		b	.L68
+ 890              	.L100:
+ 251:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 891              		.loc 1 251 25 discriminator 3 view .LVU268
+ 892              	.LBE24:
+ 893              	.LBB25:
+ 254:Core/Src/os-user.c **** 					AIRN_ON();
+ 894              		.loc 1 254 12 view .LVU269
+ 895 01e4 0024     		movs	r4, #0
+ 896              	.LVL114:
+ 897              	.L70:
+ 254:Core/Src/os-user.c **** 					AIRN_ON();
+ 898              		.loc 1 254 18 is_stmt 1 discriminator 1 view .LVU270
+ 899 01e6 632C     		cmp	r4, #99
+ 900 01e8 04D8     		bhi	.L101
+ 255:Core/Src/os-user.c **** 				}
+ 901              		.loc 1 255 6 discriminator 3 view .LVU271
+ 902 01ea FFF7FEFF 		bl	AIRN_ON
+ 903              	.LVL115:
+ 254:Core/Src/os-user.c **** 					AIRN_ON();
+ 904              		.loc 1 254 25 discriminator 3 view .LVU272
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 25
+
+
+ 905 01ee 0134     		adds	r4, r4, #1
+ 906              	.LVL116:
+ 254:Core/Src/os-user.c **** 					AIRN_ON();
+ 907              		.loc 1 254 25 is_stmt 0 discriminator 3 view .LVU273
+ 908 01f0 E4B2     		uxtb	r4, r4
+ 909              	.LVL117:
+ 254:Core/Src/os-user.c **** 					AIRN_ON();
+ 910              		.loc 1 254 25 discriminator 3 view .LVU274
+ 911 01f2 F8E7     		b	.L70
+ 912              	.L101:
+ 254:Core/Src/os-user.c **** 					AIRN_ON();
+ 913              		.loc 1 254 25 discriminator 3 view .LVU275
+ 914              	.LBE25:
+ 257:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 915              		.loc 1 257 5 is_stmt 1 view .LVU276
+ 257:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 916              		.loc 1 257 8 is_stmt 0 view .LVU277
+ 917 01f4 FFF7FEFF 		bl	Charge_detect
+ 918              	.LVL118:
+ 257:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 919              		.loc 1 257 7 view .LVU278
+ 920 01f8 0028     		cmp	r0, #0
+ 921 01fa 42D0     		beq	.L33
+ 257:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 922              		.loc 1 257 35 discriminator 1 view .LVU279
+ 923 01fc 284B     		ldr	r3, .L107
+ 924 01fe 93F84E31 		ldrb	r3, [r3, #334]	@ zero_extendqisi2
+ 257:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_CHARGE;	//下一步进入charge状态, 在charge_ing()里面一直发C
+ 925              		.loc 1 257 23 discriminator 1 view .LVU280
+ 926 0202 002B     		cmp	r3, #0
+ 927 0204 3DD1     		bne	.L33
+ 258:Core/Src/os-user.c **** 				}
+ 928              		.loc 1 258 6 is_stmt 1 view .LVU281
+ 258:Core/Src/os-user.c **** 				}
+ 929              		.loc 1 258 25 is_stmt 0 view .LVU282
+ 930 0206 264B     		ldr	r3, .L107
+ 931 0208 0822     		movs	r2, #8
+ 932 020a 9A73     		strb	r2, [r3, #14]
+ 933 020c 39E0     		b	.L33
+ 934              	.LVL119:
+ 935              	.L95:
+ 267:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 936              		.loc 1 267 5 is_stmt 1 view .LVU283
+ 937 020e 6420     		movs	r0, #100
+ 938 0210 FFF7FEFF 		bl	HAL_Delay
+ 939              	.LVL120:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 940              		.loc 1 268 5 view .LVU284
+ 941              	.LBB26:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 942              		.loc 1 268 9 view .LVU285
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 943              		.loc 1 268 12 is_stmt 0 view .LVU286
+ 944 0214 2546     		mov	r5, r4
+ 945              	.LVL121:
+ 946              	.L73:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 26
+
+
+ 947              		.loc 1 268 18 is_stmt 1 discriminator 1 view .LVU287
+ 948 0216 632D     		cmp	r5, #99
+ 949 0218 04D8     		bhi	.L102
+ 269:Core/Src/os-user.c **** 				}
+ 950              		.loc 1 269 6 discriminator 3 view .LVU288
+ 951 021a FFF7FEFF 		bl	AIRP_ON
+ 952              	.LVL122:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 953              		.loc 1 268 25 discriminator 3 view .LVU289
+ 954 021e 0135     		adds	r5, r5, #1
+ 955              	.LVL123:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 956              		.loc 1 268 25 is_stmt 0 discriminator 3 view .LVU290
+ 957 0220 EDB2     		uxtb	r5, r5
+ 958              	.LVL124:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 959              		.loc 1 268 25 discriminator 3 view .LVU291
+ 960 0222 F8E7     		b	.L73
+ 961              	.L102:
+ 268:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 962              		.loc 1 268 25 discriminator 3 view .LVU292
+ 963              	.LBE26:
+ 964              	.LBB27:
+ 271:Core/Src/os-user.c **** 					AIRN_ON();
+ 965              		.loc 1 271 12 view .LVU293
+ 966 0224 2546     		mov	r5, r4
+ 967              	.LVL125:
+ 968              	.L75:
+ 271:Core/Src/os-user.c **** 					AIRN_ON();
+ 969              		.loc 1 271 18 is_stmt 1 discriminator 1 view .LVU294
+ 970 0226 632D     		cmp	r5, #99
+ 971 0228 04D8     		bhi	.L103
+ 272:Core/Src/os-user.c **** 				}
+ 972              		.loc 1 272 6 discriminator 3 view .LVU295
+ 973 022a FFF7FEFF 		bl	AIRN_ON
+ 974              	.LVL126:
+ 271:Core/Src/os-user.c **** 					AIRN_ON();
+ 975              		.loc 1 271 25 discriminator 3 view .LVU296
+ 976 022e 0135     		adds	r5, r5, #1
+ 977              	.LVL127:
+ 271:Core/Src/os-user.c **** 					AIRN_ON();
+ 978              		.loc 1 271 25 is_stmt 0 discriminator 3 view .LVU297
+ 979 0230 EDB2     		uxtb	r5, r5
+ 980              	.LVL128:
+ 271:Core/Src/os-user.c **** 					AIRN_ON();
+ 981              		.loc 1 271 25 discriminator 3 view .LVU298
+ 982 0232 F8E7     		b	.L75
+ 983              	.L103:
+ 271:Core/Src/os-user.c **** 					AIRN_ON();
+ 984              		.loc 1 271 25 discriminator 3 view .LVU299
+ 985              	.LBE27:
+ 986              	.LBB28:
+ 274:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 987              		.loc 1 274 12 view .LVU300
+ 988 0234 2546     		mov	r5, r4
+ 989              	.LVL129:
+ 990              	.L77:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 27
+
+
+ 274:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 991              		.loc 1 274 18 is_stmt 1 discriminator 1 view .LVU301
+ 992 0236 632D     		cmp	r5, #99
+ 993 0238 04D8     		bhi	.L104
+ 275:Core/Src/os-user.c **** 				}
+ 994              		.loc 1 275 6 discriminator 3 view .LVU302
+ 995 023a FFF7FEFF 		bl	PrechargeAIR_OFF
+ 996              	.LVL130:
+ 274:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 997              		.loc 1 274 25 discriminator 3 view .LVU303
+ 998 023e 0135     		adds	r5, r5, #1
+ 999              	.LVL131:
+ 274:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 1000              		.loc 1 274 25 is_stmt 0 discriminator 3 view .LVU304
+ 1001 0240 EDB2     		uxtb	r5, r5
+ 1002              	.LVL132:
+ 274:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 1003              		.loc 1 274 25 discriminator 3 view .LVU305
+ 1004 0242 F8E7     		b	.L77
+ 1005              	.L104:
+ 274:Core/Src/os-user.c **** 					PrechargeAIR_OFF();				//关闭PREAIR
+ 1006              		.loc 1 274 25 discriminator 3 view .LVU306
+ 1007              	.LBE28:
+ 277:Core/Src/os-user.c **** 				for(u8 i=0; i<100; i++){
+ 1008              		.loc 1 277 5 is_stmt 1 view .LVU307
+ 1009 0244 6420     		movs	r0, #100
+ 1010 0246 FFF7FEFF 		bl	HAL_Delay
+ 1011              	.LVL133:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1012              		.loc 1 278 5 view .LVU308
+ 1013              	.LBB29:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1014              		.loc 1 278 9 view .LVU309
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1015              		.loc 1 278 12 is_stmt 0 view .LVU310
+ 1016 024a 2546     		mov	r5, r4
+ 1017              	.LVL134:
+ 1018              	.L79:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1019              		.loc 1 278 18 is_stmt 1 discriminator 1 view .LVU311
+ 1020 024c 632D     		cmp	r5, #99
+ 1021 024e 04D8     		bhi	.L81
+ 279:Core/Src/os-user.c **** 				}
+ 1022              		.loc 1 279 6 discriminator 3 view .LVU312
+ 1023 0250 FFF7FEFF 		bl	AIRP_ON
+ 1024              	.LVL135:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1025              		.loc 1 278 25 discriminator 3 view .LVU313
+ 1026 0254 0135     		adds	r5, r5, #1
+ 1027              	.LVL136:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1028              		.loc 1 278 25 is_stmt 0 discriminator 3 view .LVU314
+ 1029 0256 EDB2     		uxtb	r5, r5
+ 1030              	.LVL137:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1031              		.loc 1 278 25 discriminator 3 view .LVU315
+ 1032 0258 F8E7     		b	.L79
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 28
+
+
+ 1033              	.L81:
+ 1034              	.LVL138:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1035              		.loc 1 278 25 discriminator 3 view .LVU316
+ 1036              	.LBE29:
+ 1037              	.LBB30:
+ 281:Core/Src/os-user.c **** 					AIRN_ON();
+ 1038              		.loc 1 281 18 is_stmt 1 discriminator 1 view .LVU317
+ 1039 025a 632C     		cmp	r4, #99
+ 1040 025c 04D8     		bhi	.L105
+ 282:Core/Src/os-user.c **** 				}
+ 1041              		.loc 1 282 6 discriminator 3 view .LVU318
+ 1042 025e FFF7FEFF 		bl	AIRN_ON
+ 1043              	.LVL139:
+ 281:Core/Src/os-user.c **** 					AIRN_ON();
+ 1044              		.loc 1 281 25 discriminator 3 view .LVU319
+ 1045 0262 0134     		adds	r4, r4, #1
+ 1046              	.LVL140:
+ 281:Core/Src/os-user.c **** 					AIRN_ON();
+ 1047              		.loc 1 281 25 is_stmt 0 discriminator 3 view .LVU320
+ 1048 0264 E4B2     		uxtb	r4, r4
+ 1049              	.LVL141:
+ 281:Core/Src/os-user.c **** 					AIRN_ON();
+ 1050              		.loc 1 281 25 discriminator 3 view .LVU321
+ 1051 0266 F8E7     		b	.L81
+ 1052              	.L105:
+ 281:Core/Src/os-user.c **** 					AIRN_ON();
+ 1053              		.loc 1 281 25 discriminator 3 view .LVU322
+ 1054              	.LBE30:
+ 284:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 1055              		.loc 1 284 5 is_stmt 1 view .LVU323
+ 284:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 1056              		.loc 1 284 8 is_stmt 0 view .LVU324
+ 1057 0268 FFF7FEFF 		bl	Run_detect
+ 1058              	.LVL142:
+ 284:Core/Src/os-user.c **** 					E03.State.BMS_State=BMS_RUN; //下一步进入run状态, 在statemachine一直检查状态
+ 1059              		.loc 1 284 7 view .LVU325
+ 1060 026c 48B1     		cbz	r0, .L33
+ 285:Core/Src/os-user.c **** 				}
+ 1061              		.loc 1 285 6 is_stmt 1 view .LVU326
+ 285:Core/Src/os-user.c **** 				}
+ 1062              		.loc 1 285 25 is_stmt 0 view .LVU327
+ 1063 026e 0C4B     		ldr	r3, .L107
+ 1064 0270 0522     		movs	r2, #5
+ 1065 0272 9A73     		strb	r2, [r3, #14]
+ 1066 0274 05E0     		b	.L33
+ 1067              	.LVL143:
+ 1068              	.L89:
+ 290:Core/Src/os-user.c **** 			if(!(E03.Alarm.error_mute&Precharge_Fail_mute)){	//屏蔽位判断,如果没有设置屏蔽位�
+ 1069              		.loc 1 290 4 is_stmt 1 view .LVU328
+ 290:Core/Src/os-user.c **** 			if(!(E03.Alarm.error_mute&Precharge_Fail_mute)){	//屏蔽位判断,如果没有设置屏蔽位�
+ 1070              		.loc 1 290 29 is_stmt 0 view .LVU329
+ 1071 0276 0A4B     		ldr	r3, .L107
+ 1072 0278 0122     		movs	r2, #1
+ 1073 027a 83F85321 		strb	r2, [r3, #339]
+ 291:Core/Src/os-user.c **** 				Error();										//输出故障信号-关闭继电器-修改状态为error
+ 1074              		.loc 1 291 4 is_stmt 1 view .LVU330
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 29
+
+
+ 292:Core/Src/os-user.c **** 			}
+ 1075              		.loc 1 292 5 view .LVU331
+ 1076 027e FFF7FEFF 		bl	Error
+ 1077              	.LVL144:
+ 1078              	.L33:
+ 301:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 302:Core/Src/os-user.c **** 				taskPointer->taskInfo.itvTime = 0xFFFF;
+ 303:Core/Src/os-user.c **** 			}
+ 304:Core/Src/os-user.c **** 		}
+ 305:Core/Src/os-user.c **** 	}
+ 306:Core/Src/os-user.c **** }
+ 1079              		.loc 1 306 1 is_stmt 0 view .LVU332
+ 1080 0282 70BD     		pop	{r4, r5, r6, pc}
+ 1081              	.LVL145:
+ 1082              	.L84:
+ 1083              	.LCFI2:
+ 1084              		.cfi_def_cfa_offset 0
+ 1085              		.cfi_restore 4
+ 1086              		.cfi_restore 5
+ 1087              		.cfi_restore 6
+ 1088              		.cfi_restore 14
+ 1089              	.LBB31:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1090              		.loc 1 278 12 discriminator 1 view .LVU333
+ 1091 0284 1346     		mov	r3, r2
+ 1092              	.LVL146:
+ 1093              	.L83:
+ 278:Core/Src/os-user.c **** 					AIRP_ON();						//打开AIRP
+ 1094              		.loc 1 278 12 discriminator 1 view .LVU334
+ 1095              	.LBE31:
+ 1096              	.LBB32:
+ 300:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1097              		.loc 1 300 32 is_stmt 1 discriminator 1 view .LVU335
+ 300:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1098              		.loc 1 300 21 is_stmt 0 discriminator 1 view .LVU336
+ 1099 0286 1A69     		ldr	r2, [r3, #16]
+ 300:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1100              		.loc 1 300 32 discriminator 1 view .LVU337
+ 1101 0288 42B1     		cbz	r2, .L106
+ 301:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1102              		.loc 1 301 4 is_stmt 1 view .LVU338
+ 301:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1103              		.loc 1 301 29 is_stmt 0 view .LVU339
+ 1104 028a 9868     		ldr	r0, [r3, #8]
+ 301:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1105              		.loc 1 301 76 view .LVU340
+ 1106 028c 0749     		ldr	r1, .L107+12
+ 1107 028e 8968     		ldr	r1, [r1, #8]
+ 301:Core/Src/os-user.c **** 			if (taskPointer->taskInfo.Task_Function == Precharge_Run_Handle.taskInfo.Task_Function) {
+ 1108              		.loc 1 301 7 view .LVU341
+ 1109 0290 8842     		cmp	r0, r1
+ 1110 0292 F7D1     		bne	.L84
+ 302:Core/Src/os-user.c **** 			}
+ 1111              		.loc 1 302 5 is_stmt 1 view .LVU342
+ 302:Core/Src/os-user.c **** 			}
+ 1112              		.loc 1 302 35 is_stmt 0 view .LVU343
+ 1113 0294 4FF6FF71 		movw	r1, #65535
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 30
+
+
+ 1114 0298 9980     		strh	r1, [r3, #4]	@ movhi
+ 1115 029a F3E7     		b	.L84
+ 1116              	.L106:
+ 1117 029c 7047     		bx	lr
+ 1118              	.L108:
+ 1119 029e 00BF     		.align	2
+ 1120              	.L107:
+ 1121 02a0 00000000 		.word	E03
+ 1122 02a4 00000000 		.word	.LANCHOR0
+ 1123 02a8 00005940 		.word	1079574528
+ 1124 02ac 00000000 		.word	.LANCHOR1
+ 1125              	.LBE32:
+ 1126              		.cfi_endproc
+ 1127              	.LFE69:
+ 1129              		.section	.text.charge_ing,"ax",%progbits
+ 1130              		.align	1
+ 1131              		.global	charge_ing
+ 1132              		.syntax unified
+ 1133              		.thumb
+ 1134              		.thumb_func
+ 1136              	charge_ing:
+ 1137              	.LVL147:
+ 1138              	.LFB70:
+ 307:Core/Src/os-user.c **** //task1 充电状态下发送CAN数据给充电机
+ 308:Core/Src/os-user.c **** void charge_ing(void *parameterNull){
+ 1139              		.loc 1 308 37 is_stmt 1 view -0
+ 1140              		.cfi_startproc
+ 1141              		@ args = 0, pretend = 0, frame = 0
+ 1142              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1143              		.loc 1 308 37 is_stmt 0 view .LVU345
+ 1144 0000 08B5     		push	{r3, lr}
+ 1145              	.LCFI3:
+ 1146              		.cfi_def_cfa_offset 8
+ 1147              		.cfi_offset 3, -8
+ 1148              		.cfi_offset 14, -4
+ 309:Core/Src/os-user.c **** 	if(E03.State.BMS_State==BMS_CHARGE) Can_Send_Charge(ENABLE);	//充电状态下才能发充电机CA
+ 1149              		.loc 1 309 2 is_stmt 1 view .LVU346
+ 1150              		.loc 1 309 14 is_stmt 0 view .LVU347
+ 1151 0002 104B     		ldr	r3, .L117
+ 1152 0004 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1153 0006 DBB2     		uxtb	r3, r3
+ 1154              		.loc 1 309 4 view .LVU348
+ 1155 0008 082B     		cmp	r3, #8
+ 1156 000a 0AD0     		beq	.L114
+ 310:Core/Src/os-user.c **** 	else if(E03.State.BMS_State==BMS_CHARGEDONE) Can_Send_Charge(DISABLE);	//充电完成, 关闭充�
+ 1157              		.loc 1 310 7 is_stmt 1 view .LVU349
+ 1158              		.loc 1 310 19 is_stmt 0 view .LVU350
+ 1159 000c 0D4B     		ldr	r3, .L117
+ 1160 000e 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1161 0010 DBB2     		uxtb	r3, r3
+ 1162              		.loc 1 310 9 view .LVU351
+ 1163 0012 092B     		cmp	r3, #9
+ 1164 0014 09D0     		beq	.L115
+ 311:Core/Src/os-user.c **** 	else if((E03.State.BMS_State==BMS_ERROR)&&(E03.State.Charge_flag==1)) Can_Send_Charge(DISABLE);	//
+ 1165              		.loc 1 311 7 is_stmt 1 view .LVU352
+ 1166              		.loc 1 311 20 is_stmt 0 view .LVU353
+ 1167 0016 0B4B     		ldr	r3, .L117
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 31
+
+
+ 1168 0018 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1169 001a DBB2     		uxtb	r3, r3
+ 1170              		.loc 1 311 9 view .LVU354
+ 1171 001c 072B     		cmp	r3, #7
+ 1172 001e 08D0     		beq	.L116
+ 1173              	.LVL148:
+ 1174              	.L109:
+ 312:Core/Src/os-user.c **** }
+ 1175              		.loc 1 312 1 view .LVU355
+ 1176 0020 08BD     		pop	{r3, pc}
+ 1177              	.LVL149:
+ 1178              	.L114:
+ 309:Core/Src/os-user.c **** 	else if(E03.State.BMS_State==BMS_CHARGEDONE) Can_Send_Charge(DISABLE);	//充电完成, 关闭充�
+ 1179              		.loc 1 309 38 is_stmt 1 discriminator 1 view .LVU356
+ 1180 0022 0120     		movs	r0, #1
+ 1181              	.LVL150:
+ 309:Core/Src/os-user.c **** 	else if(E03.State.BMS_State==BMS_CHARGEDONE) Can_Send_Charge(DISABLE);	//充电完成, 关闭充�
+ 1182              		.loc 1 309 38 is_stmt 0 discriminator 1 view .LVU357
+ 1183 0024 FFF7FEFF 		bl	Can_Send_Charge
+ 1184              	.LVL151:
+ 1185 0028 FAE7     		b	.L109
+ 1186              	.LVL152:
+ 1187              	.L115:
+ 310:Core/Src/os-user.c **** 	else if((E03.State.BMS_State==BMS_ERROR)&&(E03.State.Charge_flag==1)) Can_Send_Charge(DISABLE);	//
+ 1188              		.loc 1 310 47 is_stmt 1 discriminator 1 view .LVU358
+ 1189 002a 0020     		movs	r0, #0
+ 1190              	.LVL153:
+ 310:Core/Src/os-user.c **** 	else if((E03.State.BMS_State==BMS_ERROR)&&(E03.State.Charge_flag==1)) Can_Send_Charge(DISABLE);	//
+ 1191              		.loc 1 310 47 is_stmt 0 discriminator 1 view .LVU359
+ 1192 002c FFF7FEFF 		bl	Can_Send_Charge
+ 1193              	.LVL154:
+ 1194 0030 F6E7     		b	.L109
+ 1195              	.LVL155:
+ 1196              	.L116:
+ 311:Core/Src/os-user.c **** }
+ 1197              		.loc 1 311 54 discriminator 1 view .LVU360
+ 1198 0032 044B     		ldr	r3, .L117
+ 1199 0034 1B7C     		ldrb	r3, [r3, #16]	@ zero_extendqisi2
+ 1200 0036 DBB2     		uxtb	r3, r3
+ 311:Core/Src/os-user.c **** }
+ 1201              		.loc 1 311 42 discriminator 1 view .LVU361
+ 1202 0038 012B     		cmp	r3, #1
+ 1203 003a F1D1     		bne	.L109
+ 311:Core/Src/os-user.c **** }
+ 1204              		.loc 1 311 72 is_stmt 1 discriminator 2 view .LVU362
+ 1205 003c 0020     		movs	r0, #0
+ 1206              	.LVL156:
+ 311:Core/Src/os-user.c **** }
+ 1207              		.loc 1 311 72 is_stmt 0 discriminator 2 view .LVU363
+ 1208 003e FFF7FEFF 		bl	Can_Send_Charge
+ 1209              	.LVL157:
+ 1210              		.loc 1 312 1 discriminator 2 view .LVU364
+ 1211 0042 EDE7     		b	.L109
+ 1212              	.L118:
+ 1213              		.align	2
+ 1214              	.L117:
+ 1215 0044 00000000 		.word	E03
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 32
+
+
+ 1216              		.cfi_endproc
+ 1217              	.LFE70:
+ 1219              		.section	.text.Hall_Timeout,"ax",%progbits
+ 1220              		.align	1
+ 1221              		.global	Hall_Timeout
+ 1222              		.syntax unified
+ 1223              		.thumb
+ 1224              		.thumb_func
+ 1226              	Hall_Timeout:
+ 1227              	.LVL158:
+ 1228              	.LFB71:
+ 313:Core/Src/os-user.c **** /*	task2 BMS_StateMachine()
+ 314:Core/Src/os-user.c ****  * 状态机任务, 为50ms一次判断当前bms状态, 进入的函数是判断该状态下的继�
+ 315:Core/Src/os-user.c ****  * */
+ 316:Core/Src/os-user.c **** 
+ 317:Core/Src/os-user.c **** /*task3: 霍尔电流超时判断, 判断超时时间
+ 318:Core/Src/os-user.c ****  * 如果没有收到霍尔电流CAN信号, Hall_Count会一直自增, 而当收到CAN会在中断�
+ 319:Core/Src/os-user.c ****  * */
+ 320:Core/Src/os-user.c **** void Hall_Timeout(void *parameterNull){
+ 1229              		.loc 1 320 39 is_stmt 1 view -0
+ 1230              		.cfi_startproc
+ 1231              		@ args = 0, pretend = 0, frame = 0
+ 1232              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1233              		.loc 1 320 39 is_stmt 0 view .LVU366
+ 1234 0000 08B5     		push	{r3, lr}
+ 1235              	.LCFI4:
+ 1236              		.cfi_def_cfa_offset 8
+ 1237              		.cfi_offset 3, -8
+ 1238              		.cfi_offset 14, -4
+ 321:Core/Src/os-user.c **** 	Hall_Count++;
+ 1239              		.loc 1 321 2 is_stmt 1 view .LVU367
+ 1240              		.loc 1 321 12 is_stmt 0 view .LVU368
+ 1241 0002 2249     		ldr	r1, .L130
+ 1242 0004 0B78     		ldrb	r3, [r1]	@ zero_extendqisi2
+ 1243 0006 0133     		adds	r3, r3, #1
+ 1244 0008 DBB2     		uxtb	r3, r3
+ 1245 000a 0B70     		strb	r3, [r1]
+ 322:Core/Src/os-user.c **** 	if(Hall_Count>E03.Threshold.Hall_Openwires_LV1){	//10s离线
+ 1246              		.loc 1 322 2 is_stmt 1 view .LVU369
+ 1247              		.loc 1 322 29 is_stmt 0 view .LVU370
+ 1248 000c 204B     		ldr	r3, .L130+4
+ 1249 000e 93F8C821 		ldrb	r2, [r3, #456]	@ zero_extendqisi2
+ 1250 0012 D2B2     		uxtb	r2, r2
+ 1251              		.loc 1 322 15 view .LVU371
+ 1252 0014 0B78     		ldrb	r3, [r1]	@ zero_extendqisi2
+ 1253 0016 DBB2     		uxtb	r3, r3
+ 1254              		.loc 1 322 4 view .LVU372
+ 1255 0018 9A42     		cmp	r2, r3
+ 1256 001a 1FD3     		bcc	.L126
+ 323:Core/Src/os-user.c **** 		E03.Alarm.Hall_Openwires=1;
+ 324:Core/Src/os-user.c **** 		if(!(E03.Alarm.error_mute&Hall_Openwires_mute)){		//判断相应的位是否被禁止告警
+ 325:Core/Src/os-user.c **** 			Error();
+ 326:Core/Src/os-user.c **** 		}
+ 327:Core/Src/os-user.c **** 		return;
+ 328:Core/Src/os-user.c **** 	}
+ 329:Core/Src/os-user.c **** 	else if(Hall_Count>E03.Threshold.Hall_Openwires_LV2){	//8s离线
+ 1257              		.loc 1 329 7 is_stmt 1 view .LVU373
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 33
+
+
+ 1258              		.loc 1 329 34 is_stmt 0 view .LVU374
+ 1259 001c 1C4B     		ldr	r3, .L130+4
+ 1260 001e 93F8C921 		ldrb	r2, [r3, #457]	@ zero_extendqisi2
+ 1261 0022 D2B2     		uxtb	r2, r2
+ 1262              		.loc 1 329 20 view .LVU375
+ 1263 0024 194B     		ldr	r3, .L130
+ 1264 0026 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1265 0028 DBB2     		uxtb	r3, r3
+ 1266              		.loc 1 329 9 view .LVU376
+ 1267 002a 9A42     		cmp	r2, r3
+ 1268 002c 23D3     		bcc	.L127
+ 330:Core/Src/os-user.c **** 		E03.Alarm.Hall_Openwires=2;
+ 331:Core/Src/os-user.c **** 		return;
+ 332:Core/Src/os-user.c **** 	}
+ 333:Core/Src/os-user.c **** 	else if(Hall_Count>E03.Threshold.Hall_Openwires_LV3){	//5s离线
+ 1269              		.loc 1 333 7 is_stmt 1 view .LVU377
+ 1270              		.loc 1 333 34 is_stmt 0 view .LVU378
+ 1271 002e 184B     		ldr	r3, .L130+4
+ 1272 0030 93F8CA21 		ldrb	r2, [r3, #458]	@ zero_extendqisi2
+ 1273 0034 D2B2     		uxtb	r2, r2
+ 1274              		.loc 1 333 20 view .LVU379
+ 1275 0036 154B     		ldr	r3, .L130
+ 1276 0038 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1277 003a DBB2     		uxtb	r3, r3
+ 1278              		.loc 1 333 9 view .LVU380
+ 1279 003c 9A42     		cmp	r2, r3
+ 1280 003e 1FD3     		bcc	.L128
+ 334:Core/Src/os-user.c **** 		E03.Alarm.Hall_Openwires=3;
+ 335:Core/Src/os-user.c **** 		return;
+ 336:Core/Src/os-user.c **** 	}
+ 337:Core/Src/os-user.c **** 	else if (Hall_Count>E03.Threshold.Hall_Openwires_LV4){	//1s离线
+ 1281              		.loc 1 337 7 is_stmt 1 view .LVU381
+ 1282              		.loc 1 337 35 is_stmt 0 view .LVU382
+ 1283 0040 134B     		ldr	r3, .L130+4
+ 1284 0042 93F8CB21 		ldrb	r2, [r3, #459]	@ zero_extendqisi2
+ 1285 0046 D2B2     		uxtb	r2, r2
+ 1286              		.loc 1 337 21 view .LVU383
+ 1287 0048 104B     		ldr	r3, .L130
+ 1288 004a 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1289 004c DBB2     		uxtb	r3, r3
+ 1290              		.loc 1 337 10 view .LVU384
+ 1291 004e 9A42     		cmp	r2, r3
+ 1292 0050 0DD2     		bcs	.L119
+ 338:Core/Src/os-user.c **** 		E03.Alarm.Hall_Openwires=4;
+ 1293              		.loc 1 338 3 is_stmt 1 view .LVU385
+ 1294              		.loc 1 338 27 is_stmt 0 view .LVU386
+ 1295 0052 0F4B     		ldr	r3, .L130+4
+ 1296 0054 0422     		movs	r2, #4
+ 1297 0056 83F85021 		strb	r2, [r3, #336]
+ 1298 005a 08E0     		b	.L119
+ 1299              	.L126:
+ 323:Core/Src/os-user.c **** 		if(!(E03.Alarm.error_mute&Hall_Openwires_mute)){		//判断相应的位是否被禁止告警
+ 1300              		.loc 1 323 3 is_stmt 1 view .LVU387
+ 323:Core/Src/os-user.c **** 		if(!(E03.Alarm.error_mute&Hall_Openwires_mute)){		//判断相应的位是否被禁止告警
+ 1301              		.loc 1 323 27 is_stmt 0 view .LVU388
+ 1302 005c 0C4B     		ldr	r3, .L130+4
+ 1303 005e 0122     		movs	r2, #1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 34
+
+
+ 1304 0060 83F85021 		strb	r2, [r3, #336]
+ 324:Core/Src/os-user.c **** 			Error();
+ 1305              		.loc 1 324 3 is_stmt 1 view .LVU389
+ 324:Core/Src/os-user.c **** 			Error();
+ 1306              		.loc 1 324 17 is_stmt 0 view .LVU390
+ 1307 0064 D3F84031 		ldr	r3, [r3, #320]
+ 324:Core/Src/os-user.c **** 			Error();
+ 1308              		.loc 1 324 5 view .LVU391
+ 1309 0068 13F4805F 		tst	r3, #4096
+ 1310 006c 00D0     		beq	.L129
+ 1311              	.LVL159:
+ 1312              	.L119:
+ 339:Core/Src/os-user.c **** 	}
+ 340:Core/Src/os-user.c **** }
+ 1313              		.loc 1 340 1 view .LVU392
+ 1314 006e 08BD     		pop	{r3, pc}
+ 1315              	.LVL160:
+ 1316              	.L129:
+ 325:Core/Src/os-user.c **** 		}
+ 1317              		.loc 1 325 4 is_stmt 1 view .LVU393
+ 1318 0070 FFF7FEFF 		bl	Error
+ 1319              	.LVL161:
+ 327:Core/Src/os-user.c **** 	}
+ 1320              		.loc 1 327 3 view .LVU394
+ 1321 0074 FBE7     		b	.L119
+ 1322              	.LVL162:
+ 1323              	.L127:
+ 330:Core/Src/os-user.c **** 		return;
+ 1324              		.loc 1 330 3 view .LVU395
+ 330:Core/Src/os-user.c **** 		return;
+ 1325              		.loc 1 330 27 is_stmt 0 view .LVU396
+ 1326 0076 064B     		ldr	r3, .L130+4
+ 1327 0078 0222     		movs	r2, #2
+ 1328 007a 83F85021 		strb	r2, [r3, #336]
+ 331:Core/Src/os-user.c **** 	}
+ 1329              		.loc 1 331 3 is_stmt 1 view .LVU397
+ 1330 007e F6E7     		b	.L119
+ 1331              	.L128:
+ 334:Core/Src/os-user.c **** 		return;
+ 1332              		.loc 1 334 3 view .LVU398
+ 334:Core/Src/os-user.c **** 		return;
+ 1333              		.loc 1 334 27 is_stmt 0 view .LVU399
+ 1334 0080 034B     		ldr	r3, .L130+4
+ 1335 0082 0322     		movs	r2, #3
+ 1336 0084 83F85021 		strb	r2, [r3, #336]
+ 335:Core/Src/os-user.c **** 	}
+ 1337              		.loc 1 335 3 is_stmt 1 view .LVU400
+ 1338 0088 F1E7     		b	.L119
+ 1339              	.L131:
+ 1340 008a 00BF     		.align	2
+ 1341              	.L130:
+ 1342 008c 00000000 		.word	.LANCHOR2
+ 1343 0090 00000000 		.word	E03
+ 1344              		.cfi_endproc
+ 1345              	.LFE71:
+ 1347              		.section	.text.Vol_deviance,"ax",%progbits
+ 1348              		.align	1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 35
+
+
+ 1349              		.global	Vol_deviance
+ 1350              		.syntax unified
+ 1351              		.thumb
+ 1352              		.thumb_func
+ 1354              	Vol_deviance:
+ 1355              	.LFB73:
+ 341:Core/Src/os-user.c **** 
+ 342:Core/Src/os-user.c **** /*	task4 状态更新
+ 343:Core/Src/os-user.c ****  * 	采集并更新预充电压和总压, 各个继电器状态
+ 344:Core/Src/os-user.c ****  * 	判断是否发生高压异常: 累积总压和总压相差太多?
+ 345:Core/Src/os-user.c ****  * */
+ 346:Core/Src/os-user.c **** // void State_Upgrade(){
+ 347:Core/Src/os-user.c **** // 	//预充电压&&总压采集
+ 348:Core/Src/os-user.c **** // 	E03.State.TotalVoltage=TS_Voltage();
+ 349:Core/Src/os-user.c **** // 	E03.State.PrechargeVoltage=PRE_Voltage();
+ 350:Core/Src/os-user.c **** // 	//AIRS状态采集
+ 351:Core/Src/os-user.c **** // 	AIRP_State();
+ 352:Core/Src/os-user.c **** // 	AIRN_State();
+ 353:Core/Src/os-user.c **** // 	PREAIR_State();
+ 354:Core/Src/os-user.c **** // 	//高压异常判断
+ 355:Core/Src/os-user.c **** // 	Vol_deviance();
+ 356:Core/Src/os-user.c **** // 	//充放电过流判断
+ 357:Core/Src/os-user.c **** // 	Current_detect();
+ 358:Core/Src/os-user.c **** // 	//根据温度判断风扇是否开启
+ 359:Core/Src/os-user.c **** // 	Fans_control();
+ 360:Core/Src/os-user.c **** // }
+ 361:Core/Src/os-user.c **** 
+ 362:Core/Src/os-user.c **** void State_Upgrade(void *parameterNull){
+ 363:Core/Src/os-user.c **** 	//预充电压&&总压采集
+ 364:Core/Src/os-user.c **** 	E03.State.TotalVoltage=TS_Voltage();
+ 365:Core/Src/os-user.c **** 	E03.State.PrechargeVoltage=PRE_Voltage();
+ 366:Core/Src/os-user.c **** 	//AIRS状态采集
+ 367:Core/Src/os-user.c **** 	AIRP_State();
+ 368:Core/Src/os-user.c **** 	AIRN_State();
+ 369:Core/Src/os-user.c **** 	PREAIR_State();
+ 370:Core/Src/os-user.c **** 	//高压异常判断
+ 371:Core/Src/os-user.c **** 	Vol_deviance();
+ 372:Core/Src/os-user.c **** 	//充放电过流判断
+ 373:Core/Src/os-user.c **** 	Current_detect();
+ 374:Core/Src/os-user.c **** 	//根据温度判断风扇是否开启
+ 375:Core/Src/os-user.c **** 	Fans_control();
+ 376:Core/Src/os-user.c **** }
+ 377:Core/Src/os-user.c **** 
+ 378:Core/Src/os-user.c **** 
+ 379:Core/Src/os-user.c **** //task4从属函数:  高压异常判断,如果累积总压和总压相差太多要报故障
+ 380:Core/Src/os-user.c **** void Vol_deviance(){
+ 1356              		.loc 1 380 20 view -0
+ 1357              		.cfi_startproc
+ 1358              		@ args = 0, pretend = 0, frame = 8
+ 1359              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1360 0000 00B5     		push	{lr}
+ 1361              	.LCFI5:
+ 1362              		.cfi_def_cfa_offset 4
+ 1363              		.cfi_offset 14, -4
+ 1364 0002 83B0     		sub	sp, sp, #12
+ 1365              	.LCFI6:
+ 1366              		.cfi_def_cfa_offset 16
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 36
+
+
+ 381:Core/Src/os-user.c **** 	static vu8 Vol_deverror=0;
+ 1367              		.loc 1 381 2 view .LVU402
+ 382:Core/Src/os-user.c **** 	vu16 Delta=0;
+ 1368              		.loc 1 382 2 view .LVU403
+ 1369              		.loc 1 382 7 is_stmt 0 view .LVU404
+ 1370 0004 0023     		movs	r3, #0
+ 1371 0006 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 383:Core/Src/os-user.c **** 	u8 precent;
+ 1372              		.loc 1 383 2 is_stmt 1 view .LVU405
+ 384:Core/Src/os-user.c **** 	//绝对值计算
+ 385:Core/Src/os-user.c **** 	if(E03.State.TotalVoltage > E03.State.TotalVoltage_cal){
+ 1373              		.loc 1 385 2 view .LVU406
+ 1374              		.loc 1 385 14 is_stmt 0 view .LVU407
+ 1375 000a 384B     		ldr	r3, .L143
+ 1376 000c DA88     		ldrh	r2, [r3, #6]
+ 1377 000e 92B2     		uxth	r2, r2
+ 1378              		.loc 1 385 39 view .LVU408
+ 1379 0010 9B88     		ldrh	r3, [r3, #4]
+ 1380 0012 9BB2     		uxth	r3, r3
+ 1381              		.loc 1 385 4 view .LVU409
+ 1382 0014 9A42     		cmp	r2, r3
+ 1383 0016 37D9     		bls	.L133
+ 386:Core/Src/os-user.c **** 		Delta = E03.State.TotalVoltage - E03.State.TotalVoltage_cal;
+ 1384              		.loc 1 386 3 is_stmt 1 view .LVU410
+ 1385              		.loc 1 386 20 is_stmt 0 view .LVU411
+ 1386 0018 344A     		ldr	r2, .L143
+ 1387 001a D388     		ldrh	r3, [r2, #6]
+ 1388 001c 9BB2     		uxth	r3, r3
+ 1389              		.loc 1 386 45 view .LVU412
+ 1390 001e 9288     		ldrh	r2, [r2, #4]
+ 1391 0020 92B2     		uxth	r2, r2
+ 1392              		.loc 1 386 34 view .LVU413
+ 1393 0022 9B1A     		subs	r3, r3, r2
+ 1394 0024 9BB2     		uxth	r3, r3
+ 1395              		.loc 1 386 9 view .LVU414
+ 1396 0026 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 1397              	.L134:
+ 387:Core/Src/os-user.c **** 	}
+ 388:Core/Src/os-user.c **** 	else{
+ 389:Core/Src/os-user.c **** 		Delta =E03.State.TotalVoltage_cal - E03.State.TotalVoltage;
+ 390:Core/Src/os-user.c **** 	}
+ 391:Core/Src/os-user.c **** 	precent = 100*(Delta/E03.State.TotalVoltage);  	//单位: %
+ 1398              		.loc 1 391 2 is_stmt 1 view .LVU415
+ 1399              		.loc 1 391 10 is_stmt 0 view .LVU416
+ 1400 002a BDF80630 		ldrh	r3, [sp, #6]
+ 1401 002e 9BB2     		uxth	r3, r3
+ 1402              		.loc 1 391 32 view .LVU417
+ 1403 0030 2E49     		ldr	r1, .L143
+ 1404 0032 CA88     		ldrh	r2, [r1, #6]
+ 1405 0034 92B2     		uxth	r2, r2
+ 1406              		.loc 1 391 10 view .LVU418
+ 1407 0036 B3FBF2F3 		udiv	r3, r3, r2
+ 1408 003a 03EB8303 		add	r3, r3, r3, lsl #2
+ 1409 003e 03EB8303 		add	r3, r3, r3, lsl #2
+ 1410 0042 9A00     		lsls	r2, r3, #2
+ 1411 0044 D2B2     		uxtb	r2, r2
+ 1412              	.LVL163:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 37
+
+
+ 392:Core/Src/os-user.c **** 
+ 393:Core/Src/os-user.c **** 	if(precent > E03.Threshold.Vol_Error_LV4)  Vol_deverror++;		//缓冲一段，避免采样有误差
+ 1413              		.loc 1 393 2 is_stmt 1 view .LVU419
+ 1414              		.loc 1 393 28 is_stmt 0 view .LVU420
+ 1415 0046 91F8CF31 		ldrb	r3, [r1, #463]	@ zero_extendqisi2
+ 1416 004a DBB2     		uxtb	r3, r3
+ 1417              		.loc 1 393 4 view .LVU421
+ 1418 004c 9342     		cmp	r3, r2
+ 1419 004e 25D2     		bcs	.L135
+ 1420              		.loc 1 393 45 is_stmt 1 discriminator 1 view .LVU422
+ 1421              		.loc 1 393 57 is_stmt 0 discriminator 1 view .LVU423
+ 1422 0050 2749     		ldr	r1, .L143+4
+ 1423 0052 0B78     		ldrb	r3, [r1]	@ zero_extendqisi2
+ 1424 0054 0133     		adds	r3, r3, #1
+ 1425 0056 DBB2     		uxtb	r3, r3
+ 1426 0058 0B70     		strb	r3, [r1]
+ 1427              	.L136:
+ 394:Core/Src/os-user.c **** 	else Vol_deverror=0;
+ 395:Core/Src/os-user.c **** 	if(Vol_deverror>2){
+ 1428              		.loc 1 395 2 is_stmt 1 view .LVU424
+ 1429              		.loc 1 395 17 is_stmt 0 view .LVU425
+ 1430 005a 254B     		ldr	r3, .L143+4
+ 1431 005c 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1432 005e DBB2     		uxtb	r3, r3
+ 1433              		.loc 1 395 4 view .LVU426
+ 1434 0060 022B     		cmp	r3, #2
+ 1435 0062 0ED9     		bls	.L132
+ 396:Core/Src/os-user.c **** 		if(precent>E03.Threshold.Vol_Error_LV1){			//一级故障并需要报警
+ 1436              		.loc 1 396 3 is_stmt 1 view .LVU427
+ 1437              		.loc 1 396 27 is_stmt 0 view .LVU428
+ 1438 0064 214B     		ldr	r3, .L143
+ 1439 0066 93F8CC31 		ldrb	r3, [r3, #460]	@ zero_extendqisi2
+ 1440 006a DBB2     		uxtb	r3, r3
+ 1441              		.loc 1 396 5 view .LVU429
+ 1442 006c 9342     		cmp	r3, r2
+ 1443 006e 1CD2     		bcs	.L138
+ 397:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 1;
+ 1444              		.loc 1 397 4 is_stmt 1 view .LVU430
+ 1445              		.loc 1 397 24 is_stmt 0 view .LVU431
+ 1446 0070 1E4B     		ldr	r3, .L143
+ 1447 0072 0122     		movs	r2, #1
+ 1448              	.LVL164:
+ 1449              		.loc 1 397 24 view .LVU432
+ 1450 0074 83F85521 		strb	r2, [r3, #341]
+ 398:Core/Src/os-user.c **** 			if((E03.Alarm.error_mute&Vol_Error_mute)==0){		//判断相应的位是否被禁止告警
+ 1451              		.loc 1 398 4 is_stmt 1 view .LVU433
+ 1452              		.loc 1 398 17 is_stmt 0 view .LVU434
+ 1453 0078 D3F84031 		ldr	r3, [r3, #320]
+ 1454              		.loc 1 398 6 view .LVU435
+ 1455 007c 13F4003F 		tst	r3, #131072
+ 1456 0080 10D0     		beq	.L142
+ 1457              	.L132:
+ 399:Core/Src/os-user.c **** 				Error();
+ 400:Core/Src/os-user.c **** 			}
+ 401:Core/Src/os-user.c **** 		}
+ 402:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV2)
+ 403:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 2;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 38
+
+
+ 404:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV3)
+ 405:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 3;
+ 406:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV4)
+ 407:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 4;
+ 408:Core/Src/os-user.c **** 	}
+ 409:Core/Src/os-user.c **** }
+ 1458              		.loc 1 409 1 view .LVU436
+ 1459 0082 03B0     		add	sp, sp, #12
+ 1460              	.LCFI7:
+ 1461              		.cfi_remember_state
+ 1462              		.cfi_def_cfa_offset 4
+ 1463              		@ sp needed
+ 1464 0084 5DF804FB 		ldr	pc, [sp], #4
+ 1465              	.L133:
+ 1466              	.LCFI8:
+ 1467              		.cfi_restore_state
+ 389:Core/Src/os-user.c **** 	}
+ 1468              		.loc 1 389 3 is_stmt 1 view .LVU437
+ 389:Core/Src/os-user.c **** 	}
+ 1469              		.loc 1 389 19 is_stmt 0 view .LVU438
+ 1470 0088 184A     		ldr	r2, .L143
+ 1471 008a 9388     		ldrh	r3, [r2, #4]
+ 1472 008c 9BB2     		uxth	r3, r3
+ 389:Core/Src/os-user.c **** 	}
+ 1473              		.loc 1 389 48 view .LVU439
+ 1474 008e D288     		ldrh	r2, [r2, #6]
+ 1475 0090 92B2     		uxth	r2, r2
+ 389:Core/Src/os-user.c **** 	}
+ 1476              		.loc 1 389 37 view .LVU440
+ 1477 0092 9B1A     		subs	r3, r3, r2
+ 1478 0094 9BB2     		uxth	r3, r3
+ 389:Core/Src/os-user.c **** 	}
+ 1479              		.loc 1 389 9 view .LVU441
+ 1480 0096 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 1481 009a C6E7     		b	.L134
+ 1482              	.LVL165:
+ 1483              	.L135:
+ 394:Core/Src/os-user.c **** 	if(Vol_deverror>2){
+ 1484              		.loc 1 394 7 is_stmt 1 view .LVU442
+ 394:Core/Src/os-user.c **** 	if(Vol_deverror>2){
+ 1485              		.loc 1 394 19 is_stmt 0 view .LVU443
+ 1486 009c 144B     		ldr	r3, .L143+4
+ 1487 009e 0021     		movs	r1, #0
+ 1488 00a0 1970     		strb	r1, [r3]
+ 1489 00a2 DAE7     		b	.L136
+ 1490              	.LVL166:
+ 1491              	.L142:
+ 399:Core/Src/os-user.c **** 				Error();
+ 1492              		.loc 1 399 5 is_stmt 1 view .LVU444
+ 1493 00a4 FFF7FEFF 		bl	Error
+ 1494              	.LVL167:
+ 1495 00a8 EBE7     		b	.L132
+ 1496              	.LVL168:
+ 1497              	.L138:
+ 402:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 2;
+ 1498              		.loc 1 402 8 view .LVU445
+ 402:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 2;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 39
+
+
+ 1499              		.loc 1 402 32 is_stmt 0 view .LVU446
+ 1500 00aa 104B     		ldr	r3, .L143
+ 1501 00ac 93F8CD31 		ldrb	r3, [r3, #461]	@ zero_extendqisi2
+ 1502 00b0 DBB2     		uxtb	r3, r3
+ 402:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 2;
+ 1503              		.loc 1 402 10 view .LVU447
+ 1504 00b2 9342     		cmp	r3, r2
+ 1505 00b4 04D2     		bcs	.L139
+ 403:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV3)
+ 1506              		.loc 1 403 4 is_stmt 1 view .LVU448
+ 403:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV3)
+ 1507              		.loc 1 403 24 is_stmt 0 view .LVU449
+ 1508 00b6 0D4B     		ldr	r3, .L143
+ 1509 00b8 0222     		movs	r2, #2
+ 1510              	.LVL169:
+ 403:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV3)
+ 1511              		.loc 1 403 24 view .LVU450
+ 1512 00ba 83F85521 		strb	r2, [r3, #341]
+ 1513 00be E0E7     		b	.L132
+ 1514              	.LVL170:
+ 1515              	.L139:
+ 404:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 3;
+ 1516              		.loc 1 404 8 is_stmt 1 view .LVU451
+ 404:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 3;
+ 1517              		.loc 1 404 32 is_stmt 0 view .LVU452
+ 1518 00c0 0A4B     		ldr	r3, .L143
+ 1519 00c2 93F8CE31 		ldrb	r3, [r3, #462]	@ zero_extendqisi2
+ 1520 00c6 DBB2     		uxtb	r3, r3
+ 404:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 3;
+ 1521              		.loc 1 404 10 view .LVU453
+ 1522 00c8 9342     		cmp	r3, r2
+ 1523 00ca 04D2     		bcs	.L140
+ 405:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV4)
+ 1524              		.loc 1 405 4 is_stmt 1 view .LVU454
+ 405:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV4)
+ 1525              		.loc 1 405 24 is_stmt 0 view .LVU455
+ 1526 00cc 074B     		ldr	r3, .L143
+ 1527 00ce 0322     		movs	r2, #3
+ 1528              	.LVL171:
+ 405:Core/Src/os-user.c **** 		else if(precent>E03.Threshold.Vol_Error_LV4)
+ 1529              		.loc 1 405 24 view .LVU456
+ 1530 00d0 83F85521 		strb	r2, [r3, #341]
+ 1531 00d4 D5E7     		b	.L132
+ 1532              	.LVL172:
+ 1533              	.L140:
+ 406:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 4;
+ 1534              		.loc 1 406 8 is_stmt 1 view .LVU457
+ 406:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 4;
+ 1535              		.loc 1 406 32 is_stmt 0 view .LVU458
+ 1536 00d6 054B     		ldr	r3, .L143
+ 1537 00d8 93F8CF31 		ldrb	r3, [r3, #463]	@ zero_extendqisi2
+ 1538 00dc DBB2     		uxtb	r3, r3
+ 406:Core/Src/os-user.c **** 			E03.Alarm.Vol_Error = 4;
+ 1539              		.loc 1 406 10 view .LVU459
+ 1540 00de 9342     		cmp	r3, r2
+ 1541 00e0 CFD2     		bcs	.L132
+ 407:Core/Src/os-user.c **** 	}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 40
+
+
+ 1542              		.loc 1 407 4 is_stmt 1 view .LVU460
+ 407:Core/Src/os-user.c **** 	}
+ 1543              		.loc 1 407 24 is_stmt 0 view .LVU461
+ 1544 00e2 024B     		ldr	r3, .L143
+ 1545 00e4 0422     		movs	r2, #4
+ 1546              	.LVL173:
+ 407:Core/Src/os-user.c **** 	}
+ 1547              		.loc 1 407 24 view .LVU462
+ 1548 00e6 83F85521 		strb	r2, [r3, #341]
+ 1549              		.loc 1 409 1 view .LVU463
+ 1550 00ea CAE7     		b	.L132
+ 1551              	.L144:
+ 1552              		.align	2
+ 1553              	.L143:
+ 1554 00ec 00000000 		.word	E03
+ 1555 00f0 00000000 		.word	.LANCHOR3
+ 1556              		.cfi_endproc
+ 1557              	.LFE73:
+ 1559              		.section	.text.Current_detect,"ax",%progbits
+ 1560              		.align	1
+ 1561              		.global	Current_detect
+ 1562              		.syntax unified
+ 1563              		.thumb
+ 1564              		.thumb_func
+ 1566              	Current_detect:
+ 1567              	.LFB74:
+ 410:Core/Src/os-user.c **** //task4从属函数: 电流判断, 判断在充电和放电时候电流是否过流
+ 411:Core/Src/os-user.c **** void Current_detect(){
+ 1568              		.loc 1 411 22 is_stmt 1 view -0
+ 1569              		.cfi_startproc
+ 1570              		@ args = 0, pretend = 0, frame = 8
+ 1571              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1572              		@ link register save eliminated.
+ 1573 0000 82B0     		sub	sp, sp, #8
+ 1574              	.LCFI9:
+ 1575              		.cfi_def_cfa_offset 8
+ 412:Core/Src/os-user.c **** 	vs16 temp_cur=E03.State.TotalCurrent/100;	//将电流单位从mA转换成0.1A/bit, 如6000mA被转
+ 1576              		.loc 1 412 2 view .LVU465
+ 1577              		.loc 1 412 25 is_stmt 0 view .LVU466
+ 1578 0002 454B     		ldr	r3, .L165
+ 1579 0004 1B68     		ldr	r3, [r3]
+ 1580              		.loc 1 412 38 view .LVU467
+ 1581 0006 454A     		ldr	r2, .L165+4
+ 1582 0008 82FB0312 		smull	r1, r2, r2, r3
+ 1583 000c DB17     		asrs	r3, r3, #31
+ 1584 000e C3EB6213 		rsb	r3, r3, r2, asr #5
+ 1585              		.loc 1 412 7 view .LVU468
+ 1586 0012 1BB2     		sxth	r3, r3
+ 1587 0014 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 413:Core/Src/os-user.c **** 	if (temp_cur<0) temp_cur=(-1)*temp_cur;	//取个绝对值
+ 1588              		.loc 1 413 2 is_stmt 1 view .LVU469
+ 1589              		.loc 1 413 14 is_stmt 0 view .LVU470
+ 1590 0018 BDF80630 		ldrh	r3, [sp, #6]
+ 1591              		.loc 1 413 5 view .LVU471
+ 1592 001c 13F4004F 		tst	r3, #32768
+ 1593 0020 0BD1     		bne	.L156
+ 1594              	.L146:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 41
+
+
+ 414:Core/Src/os-user.c **** 	if(E03.State.BMS_State==BMS_RUN){	//此时电流为正值
+ 1595              		.loc 1 414 2 is_stmt 1 view .LVU472
+ 1596              		.loc 1 414 14 is_stmt 0 view .LVU473
+ 1597 0022 3D4B     		ldr	r3, .L165
+ 1598 0024 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1599 0026 DBB2     		uxtb	r3, r3
+ 1600              		.loc 1 414 4 view .LVU474
+ 1601 0028 052B     		cmp	r3, #5
+ 1602 002a 0DD0     		beq	.L157
+ 415:Core/Src/os-user.c **** 		if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV1){
+ 416:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=1;
+ 417:Core/Src/os-user.c **** //			if(!(E03.Alarm.error_mute&StaticDischarge_OC_mute)){		//判断相应的位是否被禁止告�
+ 418:Core/Src/os-user.c **** //				Error();
+ 419:Core/Src/os-user.c **** //			}
+ 420:Core/Src/os-user.c **** 			return;
+ 421:Core/Src/os-user.c **** 		}
+ 422:Core/Src/os-user.c **** 		else if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV2){
+ 423:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=2;
+ 424:Core/Src/os-user.c **** 			return;
+ 425:Core/Src/os-user.c **** 		}
+ 426:Core/Src/os-user.c **** 		else if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV3){
+ 427:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=3;
+ 428:Core/Src/os-user.c **** 			return;
+ 429:Core/Src/os-user.c **** 		}
+ 430:Core/Src/os-user.c **** 		else if (E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV4){
+ 431:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=4;
+ 432:Core/Src/os-user.c **** 		}
+ 433:Core/Src/os-user.c **** 	}
+ 434:Core/Src/os-user.c **** 	else if(E03.State.BMS_State==BMS_CHARGE){	//此时电流为负值
+ 1603              		.loc 1 434 7 is_stmt 1 view .LVU475
+ 1604              		.loc 1 434 19 is_stmt 0 view .LVU476
+ 1605 002c 3A4B     		ldr	r3, .L165
+ 1606 002e 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1607 0030 DBB2     		uxtb	r3, r3
+ 1608              		.loc 1 434 9 view .LVU477
+ 1609 0032 082B     		cmp	r3, #8
+ 1610 0034 38D0     		beq	.L158
+ 1611              	.L145:
+ 435:Core/Src/os-user.c **** 		if(temp_cur>E03.Threshold.StaticCharge_OC_LV1){
+ 436:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=1;
+ 437:Core/Src/os-user.c **** //			if(!(E03.Alarm.error_mute&StaticCharge_OC_mute)){		//判断相应的位是否被禁止告警
+ 438:Core/Src/os-user.c **** //				Error();
+ 439:Core/Src/os-user.c **** //			}
+ 440:Core/Src/os-user.c **** 			return;
+ 441:Core/Src/os-user.c **** 		}
+ 442:Core/Src/os-user.c **** 		else if(temp_cur>E03.Threshold.StaticCharge_OC_LV2){
+ 443:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=2;
+ 444:Core/Src/os-user.c **** 			return;
+ 445:Core/Src/os-user.c **** 		}
+ 446:Core/Src/os-user.c **** 		else if(temp_cur>E03.Threshold.StaticCharge_OC_LV3){
+ 447:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=3;
+ 448:Core/Src/os-user.c **** 			return;
+ 449:Core/Src/os-user.c **** 		}
+ 450:Core/Src/os-user.c **** 		else if (temp_cur>E03.Threshold.StaticCharge_OC_LV4){
+ 451:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=4;
+ 452:Core/Src/os-user.c **** 		}
+ 453:Core/Src/os-user.c **** 	}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 42
+
+
+ 454:Core/Src/os-user.c **** }
+ 1612              		.loc 1 454 1 view .LVU478
+ 1613 0036 02B0     		add	sp, sp, #8
+ 1614              	.LCFI10:
+ 1615              		.cfi_remember_state
+ 1616              		.cfi_def_cfa_offset 0
+ 1617              		@ sp needed
+ 1618 0038 7047     		bx	lr
+ 1619              	.L156:
+ 1620              	.LCFI11:
+ 1621              		.cfi_restore_state
+ 413:Core/Src/os-user.c **** 	if(E03.State.BMS_State==BMS_RUN){	//此时电流为正值
+ 1622              		.loc 1 413 18 is_stmt 1 discriminator 1 view .LVU479
+ 413:Core/Src/os-user.c **** 	if(E03.State.BMS_State==BMS_RUN){	//此时电流为正值
+ 1623              		.loc 1 413 26 is_stmt 0 discriminator 1 view .LVU480
+ 1624 003a BDF80630 		ldrh	r3, [sp, #6]
+ 1625 003e 5B42     		rsbs	r3, r3, #0
+ 1626 0040 1BB2     		sxth	r3, r3
+ 1627 0042 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 1628 0046 ECE7     		b	.L146
+ 1629              	.L157:
+ 415:Core/Src/os-user.c **** 		if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV1){
+ 1630              		.loc 1 415 3 is_stmt 1 view .LVU481
+ 415:Core/Src/os-user.c **** 		if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV1){
+ 1631              		.loc 1 415 15 is_stmt 0 view .LVU482
+ 1632 0048 334B     		ldr	r3, .L165
+ 1633 004a 1A68     		ldr	r2, [r3]
+ 415:Core/Src/os-user.c **** 		if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV1){
+ 1634              		.loc 1 415 42 view .LVU483
+ 1635 004c B3F87831 		ldrh	r3, [r3, #376]
+ 1636 0050 9BB2     		uxth	r3, r3
+ 415:Core/Src/os-user.c **** 		if(E03.State.TotalCurrent>E03.Threshold.StaticDischarge_OC_LV1){
+ 1637              		.loc 1 415 5 view .LVU484
+ 1638 0052 9A42     		cmp	r2, r3
+ 1639 0054 19DC     		bgt	.L159
+ 422:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=2;
+ 1640              		.loc 1 422 8 is_stmt 1 view .LVU485
+ 422:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=2;
+ 1641              		.loc 1 422 20 is_stmt 0 view .LVU486
+ 1642 0056 304B     		ldr	r3, .L165
+ 1643 0058 1A68     		ldr	r2, [r3]
+ 422:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=2;
+ 1644              		.loc 1 422 47 view .LVU487
+ 1645 005a B3F87A31 		ldrh	r3, [r3, #378]
+ 1646 005e 9BB2     		uxth	r3, r3
+ 422:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=2;
+ 1647              		.loc 1 422 10 view .LVU488
+ 1648 0060 9A42     		cmp	r2, r3
+ 1649 0062 17DC     		bgt	.L160
+ 426:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=3;
+ 1650              		.loc 1 426 8 is_stmt 1 view .LVU489
+ 426:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=3;
+ 1651              		.loc 1 426 20 is_stmt 0 view .LVU490
+ 1652 0064 2C4B     		ldr	r3, .L165
+ 1653 0066 1A68     		ldr	r2, [r3]
+ 426:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=3;
+ 1654              		.loc 1 426 47 view .LVU491
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 43
+
+
+ 1655 0068 B3F87C31 		ldrh	r3, [r3, #380]
+ 1656 006c 9BB2     		uxth	r3, r3
+ 426:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=3;
+ 1657              		.loc 1 426 10 view .LVU492
+ 1658 006e 9A42     		cmp	r2, r3
+ 1659 0070 15DC     		bgt	.L161
+ 430:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=4;
+ 1660              		.loc 1 430 8 is_stmt 1 view .LVU493
+ 430:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=4;
+ 1661              		.loc 1 430 21 is_stmt 0 view .LVU494
+ 1662 0072 294B     		ldr	r3, .L165
+ 1663 0074 1A68     		ldr	r2, [r3]
+ 430:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=4;
+ 1664              		.loc 1 430 48 view .LVU495
+ 1665 0076 B3F87E31 		ldrh	r3, [r3, #382]
+ 1666 007a 9BB2     		uxth	r3, r3
+ 430:Core/Src/os-user.c **** 			E03.Alarm.StaticDischarge_OC=4;
+ 1667              		.loc 1 430 11 view .LVU496
+ 1668 007c 9A42     		cmp	r2, r3
+ 1669 007e DADD     		ble	.L145
+ 431:Core/Src/os-user.c **** 		}
+ 1670              		.loc 1 431 4 is_stmt 1 view .LVU497
+ 431:Core/Src/os-user.c **** 		}
+ 1671              		.loc 1 431 32 is_stmt 0 view .LVU498
+ 1672 0080 254B     		ldr	r3, .L165
+ 1673 0082 0422     		movs	r2, #4
+ 1674 0084 83F84C21 		strb	r2, [r3, #332]
+ 1675 0088 D5E7     		b	.L145
+ 1676              	.L159:
+ 416:Core/Src/os-user.c **** //			if(!(E03.Alarm.error_mute&StaticDischarge_OC_mute)){		//判断相应的位是否被禁止告�
+ 1677              		.loc 1 416 4 is_stmt 1 view .LVU499
+ 416:Core/Src/os-user.c **** //			if(!(E03.Alarm.error_mute&StaticDischarge_OC_mute)){		//判断相应的位是否被禁止告�
+ 1678              		.loc 1 416 32 is_stmt 0 view .LVU500
+ 1679 008a 234B     		ldr	r3, .L165
+ 1680 008c 0122     		movs	r2, #1
+ 1681 008e 83F84C21 		strb	r2, [r3, #332]
+ 420:Core/Src/os-user.c **** 		}
+ 1682              		.loc 1 420 4 is_stmt 1 view .LVU501
+ 1683 0092 D0E7     		b	.L145
+ 1684              	.L160:
+ 423:Core/Src/os-user.c **** 			return;
+ 1685              		.loc 1 423 4 view .LVU502
+ 423:Core/Src/os-user.c **** 			return;
+ 1686              		.loc 1 423 32 is_stmt 0 view .LVU503
+ 1687 0094 204B     		ldr	r3, .L165
+ 1688 0096 0222     		movs	r2, #2
+ 1689 0098 83F84C21 		strb	r2, [r3, #332]
+ 424:Core/Src/os-user.c **** 		}
+ 1690              		.loc 1 424 4 is_stmt 1 view .LVU504
+ 1691 009c CBE7     		b	.L145
+ 1692              	.L161:
+ 427:Core/Src/os-user.c **** 			return;
+ 1693              		.loc 1 427 4 view .LVU505
+ 427:Core/Src/os-user.c **** 			return;
+ 1694              		.loc 1 427 32 is_stmt 0 view .LVU506
+ 1695 009e 1E4B     		ldr	r3, .L165
+ 1696 00a0 0322     		movs	r2, #3
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 44
+
+
+ 1697 00a2 83F84C21 		strb	r2, [r3, #332]
+ 428:Core/Src/os-user.c **** 		}
+ 1698              		.loc 1 428 4 is_stmt 1 view .LVU507
+ 1699 00a6 C6E7     		b	.L145
+ 1700              	.L158:
+ 435:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=1;
+ 1701              		.loc 1 435 3 view .LVU508
+ 435:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=1;
+ 1702              		.loc 1 435 14 is_stmt 0 view .LVU509
+ 1703 00a8 BDF80620 		ldrh	r2, [sp, #6]
+ 1704 00ac 12B2     		sxth	r2, r2
+ 435:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=1;
+ 1705              		.loc 1 435 28 view .LVU510
+ 1706 00ae 1A4B     		ldr	r3, .L165
+ 1707 00b0 B3F88031 		ldrh	r3, [r3, #384]
+ 1708 00b4 9BB2     		uxth	r3, r3
+ 435:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=1;
+ 1709              		.loc 1 435 5 view .LVU511
+ 1710 00b6 9A42     		cmp	r2, r3
+ 1711 00b8 1FDC     		bgt	.L162
+ 442:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=2;
+ 1712              		.loc 1 442 8 is_stmt 1 view .LVU512
+ 442:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=2;
+ 1713              		.loc 1 442 19 is_stmt 0 view .LVU513
+ 1714 00ba BDF80620 		ldrh	r2, [sp, #6]
+ 1715 00be 12B2     		sxth	r2, r2
+ 442:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=2;
+ 1716              		.loc 1 442 33 view .LVU514
+ 1717 00c0 154B     		ldr	r3, .L165
+ 1718 00c2 B3F88231 		ldrh	r3, [r3, #386]
+ 1719 00c6 9BB2     		uxth	r3, r3
+ 442:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=2;
+ 1720              		.loc 1 442 10 view .LVU515
+ 1721 00c8 9A42     		cmp	r2, r3
+ 1722 00ca 1BDC     		bgt	.L163
+ 446:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=3;
+ 1723              		.loc 1 446 8 is_stmt 1 view .LVU516
+ 446:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=3;
+ 1724              		.loc 1 446 19 is_stmt 0 view .LVU517
+ 1725 00cc BDF80620 		ldrh	r2, [sp, #6]
+ 1726 00d0 12B2     		sxth	r2, r2
+ 446:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=3;
+ 1727              		.loc 1 446 33 view .LVU518
+ 1728 00d2 114B     		ldr	r3, .L165
+ 1729 00d4 B3F88431 		ldrh	r3, [r3, #388]
+ 1730 00d8 9BB2     		uxth	r3, r3
+ 446:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=3;
+ 1731              		.loc 1 446 10 view .LVU519
+ 1732 00da 9A42     		cmp	r2, r3
+ 1733 00dc 17DC     		bgt	.L164
+ 450:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=4;
+ 1734              		.loc 1 450 8 is_stmt 1 view .LVU520
+ 450:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=4;
+ 1735              		.loc 1 450 20 is_stmt 0 view .LVU521
+ 1736 00de BDF80620 		ldrh	r2, [sp, #6]
+ 1737 00e2 12B2     		sxth	r2, r2
+ 450:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=4;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 45
+
+
+ 1738              		.loc 1 450 34 view .LVU522
+ 1739 00e4 0C4B     		ldr	r3, .L165
+ 1740 00e6 B3F88631 		ldrh	r3, [r3, #390]
+ 1741 00ea 9BB2     		uxth	r3, r3
+ 450:Core/Src/os-user.c **** 			E03.Alarm.StaticCharge_OC=4;
+ 1742              		.loc 1 450 11 view .LVU523
+ 1743 00ec 9A42     		cmp	r2, r3
+ 1744 00ee A2DD     		ble	.L145
+ 451:Core/Src/os-user.c **** 		}
+ 1745              		.loc 1 451 4 is_stmt 1 view .LVU524
+ 451:Core/Src/os-user.c **** 		}
+ 1746              		.loc 1 451 29 is_stmt 0 view .LVU525
+ 1747 00f0 094B     		ldr	r3, .L165
+ 1748 00f2 0422     		movs	r2, #4
+ 1749 00f4 83F84D21 		strb	r2, [r3, #333]
+ 1750 00f8 9DE7     		b	.L145
+ 1751              	.L162:
+ 436:Core/Src/os-user.c **** //			if(!(E03.Alarm.error_mute&StaticCharge_OC_mute)){		//判断相应的位是否被禁止告警
+ 1752              		.loc 1 436 4 is_stmt 1 view .LVU526
+ 436:Core/Src/os-user.c **** //			if(!(E03.Alarm.error_mute&StaticCharge_OC_mute)){		//判断相应的位是否被禁止告警
+ 1753              		.loc 1 436 29 is_stmt 0 view .LVU527
+ 1754 00fa 074B     		ldr	r3, .L165
+ 1755 00fc 0122     		movs	r2, #1
+ 1756 00fe 83F84D21 		strb	r2, [r3, #333]
+ 440:Core/Src/os-user.c **** 		}
+ 1757              		.loc 1 440 4 is_stmt 1 view .LVU528
+ 1758 0102 98E7     		b	.L145
+ 1759              	.L163:
+ 443:Core/Src/os-user.c **** 			return;
+ 1760              		.loc 1 443 4 view .LVU529
+ 443:Core/Src/os-user.c **** 			return;
+ 1761              		.loc 1 443 29 is_stmt 0 view .LVU530
+ 1762 0104 044B     		ldr	r3, .L165
+ 1763 0106 0222     		movs	r2, #2
+ 1764 0108 83F84D21 		strb	r2, [r3, #333]
+ 444:Core/Src/os-user.c **** 		}
+ 1765              		.loc 1 444 4 is_stmt 1 view .LVU531
+ 1766 010c 93E7     		b	.L145
+ 1767              	.L164:
+ 447:Core/Src/os-user.c **** 			return;
+ 1768              		.loc 1 447 4 view .LVU532
+ 447:Core/Src/os-user.c **** 			return;
+ 1769              		.loc 1 447 29 is_stmt 0 view .LVU533
+ 1770 010e 024B     		ldr	r3, .L165
+ 1771 0110 0322     		movs	r2, #3
+ 1772 0112 83F84D21 		strb	r2, [r3, #333]
+ 448:Core/Src/os-user.c **** 		}
+ 1773              		.loc 1 448 4 is_stmt 1 view .LVU534
+ 1774 0116 8EE7     		b	.L145
+ 1775              	.L166:
+ 1776              		.align	2
+ 1777              	.L165:
+ 1778 0118 00000000 		.word	E03
+ 1779 011c 1F85EB51 		.word	1374389535
+ 1780              		.cfi_endproc
+ 1781              	.LFE74:
+ 1783              		.section	.text.Fans_control,"ax",%progbits
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 46
+
+
+ 1784              		.align	1
+ 1785              		.global	Fans_control
+ 1786              		.syntax unified
+ 1787              		.thumb
+ 1788              		.thumb_func
+ 1790              	Fans_control:
+ 1791              	.LFB75:
+ 455:Core/Src/os-user.c **** //task4从属函数: 判断风扇是否达到条件开启
+ 456:Core/Src/os-user.c **** void Fans_control(){
+ 1792              		.loc 1 456 20 view -0
+ 1793              		.cfi_startproc
+ 1794              		@ args = 0, pretend = 0, frame = 0
+ 1795              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1796 0000 08B5     		push	{r3, lr}
+ 1797              	.LCFI12:
+ 1798              		.cfi_def_cfa_offset 8
+ 1799              		.cfi_offset 3, -8
+ 1800              		.cfi_offset 14, -4
+ 457:Core/Src/os-user.c **** 	/*超过开风扇阈值要开风扇, 还需要判断BMS是否处于工装模式, 否则会引起�
+ 458:Core/Src/os-user.c **** 	if(((E03.Cell.MaxTemp > E03.Threshold.Fans_Start_OT)||((E03.Cell.MaxTemp-E03.Cell.MinTemp) > E03.T
+ 1801              		.loc 1 458 2 view .LVU536
+ 1802              		.loc 1 458 15 is_stmt 0 view .LVU537
+ 1803 0002 1D4A     		ldr	r2, .L173
+ 1804 0004 B2F82031 		ldrh	r3, [r2, #288]
+ 1805 0008 9BB2     		uxth	r3, r3
+ 1806              		.loc 1 458 39 view .LVU538
+ 1807 000a 92F8D021 		ldrb	r2, [r2, #464]	@ zero_extendqisi2
+ 1808              		.loc 1 458 4 view .LVU539
+ 1809 000e 9342     		cmp	r3, r2
+ 1810 0010 0CD8     		bhi	.L168
+ 1811              		.loc 1 458 66 discriminator 2 view .LVU540
+ 1812 0012 194A     		ldr	r2, .L173
+ 1813 0014 B2F82031 		ldrh	r3, [r2, #288]
+ 1814 0018 9BB2     		uxth	r3, r3
+ 1815              		.loc 1 458 83 discriminator 2 view .LVU541
+ 1816 001a B2F82211 		ldrh	r1, [r2, #290]
+ 1817 001e 89B2     		uxth	r1, r1
+ 1818              		.loc 1 458 74 discriminator 2 view .LVU542
+ 1819 0020 5B1A     		subs	r3, r3, r1
+ 1820              		.loc 1 458 108 discriminator 2 view .LVU543
+ 1821 0022 92F8D221 		ldrb	r2, [r2, #466]	@ zero_extendqisi2
+ 1822 0026 D2B2     		uxtb	r2, r2
+ 1823              		.loc 1 458 54 discriminator 2 view .LVU544
+ 1824 0028 9342     		cmp	r3, r2
+ 1825 002a 04DD     		ble	.L169
+ 1826              	.L168:
+ 1827              		.loc 1 458 137 discriminator 3 view .LVU545
+ 1828 002c 124B     		ldr	r3, .L173
+ 1829 002e 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1830 0030 DBB2     		uxtb	r3, r3
+ 1831              		.loc 1 458 125 discriminator 3 view .LVU546
+ 1832 0032 0A2B     		cmp	r3, #10
+ 1833 0034 1CD1     		bne	.L172
+ 1834              	.L169:
+ 459:Core/Src/os-user.c **** 		Fans_ON();
+ 460:Core/Src/os-user.c **** 	}
+ 461:Core/Src/os-user.c **** 	/*要同时达到两个关风扇的阈值条件才能关风扇 还需要判断BMS是否处于工�
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 47
+
+
+ 462:Core/Src/os-user.c **** 	else if(((E03.Cell.MaxTemp<E03.Threshold.Fans_End_OT)&&((E03.Cell.MaxTemp-E03.Cell.MinTemp)<E03.Th
+ 1835              		.loc 1 462 7 is_stmt 1 view .LVU547
+ 1836              		.loc 1 462 20 is_stmt 0 view .LVU548
+ 1837 0036 104A     		ldr	r2, .L173
+ 1838 0038 B2F82031 		ldrh	r3, [r2, #288]
+ 1839 003c 9BB2     		uxth	r3, r3
+ 1840              		.loc 1 462 42 view .LVU549
+ 1841 003e 92F8D121 		ldrb	r2, [r2, #465]	@ zero_extendqisi2
+ 1842              		.loc 1 462 9 view .LVU550
+ 1843 0042 9342     		cmp	r3, r2
+ 1844 0044 16D2     		bcs	.L167
+ 1845              		.loc 1 462 67 discriminator 1 view .LVU551
+ 1846 0046 0C4A     		ldr	r2, .L173
+ 1847 0048 B2F82031 		ldrh	r3, [r2, #288]
+ 1848 004c 9BB2     		uxth	r3, r3
+ 1849              		.loc 1 462 84 discriminator 1 view .LVU552
+ 1850 004e B2F82211 		ldrh	r1, [r2, #290]
+ 1851 0052 89B2     		uxth	r1, r1
+ 1852              		.loc 1 462 75 discriminator 1 view .LVU553
+ 1853 0054 5B1A     		subs	r3, r3, r1
+ 1854              		.loc 1 462 107 discriminator 1 view .LVU554
+ 1855 0056 92F8D321 		ldrb	r2, [r2, #467]	@ zero_extendqisi2
+ 1856 005a D2B2     		uxtb	r2, r2
+ 1857              		.loc 1 462 55 discriminator 1 view .LVU555
+ 1858 005c 9342     		cmp	r3, r2
+ 1859 005e 09DA     		bge	.L167
+ 1860              		.loc 1 462 134 discriminator 2 view .LVU556
+ 1861 0060 054B     		ldr	r3, .L173
+ 1862 0062 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 1863 0064 DBB2     		uxtb	r3, r3
+ 1864              		.loc 1 462 122 discriminator 2 view .LVU557
+ 1865 0066 0A2B     		cmp	r3, #10
+ 1866 0068 04D0     		beq	.L167
+ 463:Core/Src/os-user.c **** 			Fans_OFF();
+ 1867              		.loc 1 463 4 is_stmt 1 view .LVU558
+ 1868 006a FFF7FEFF 		bl	Fans_OFF
+ 1869              	.LVL174:
+ 464:Core/Src/os-user.c **** 	}
+ 465:Core/Src/os-user.c **** }
+ 1870              		.loc 1 465 1 is_stmt 0 view .LVU559
+ 1871 006e 01E0     		b	.L167
+ 1872              	.L172:
+ 459:Core/Src/os-user.c **** 	}
+ 1873              		.loc 1 459 3 is_stmt 1 view .LVU560
+ 1874 0070 FFF7FEFF 		bl	Fans_ON
+ 1875              	.LVL175:
+ 1876              	.L167:
+ 1877              		.loc 1 465 1 is_stmt 0 view .LVU561
+ 1878 0074 08BD     		pop	{r3, pc}
+ 1879              	.L174:
+ 1880 0076 00BF     		.align	2
+ 1881              	.L173:
+ 1882 0078 00000000 		.word	E03
+ 1883              		.cfi_endproc
+ 1884              	.LFE75:
+ 1886              		.section	.text.State_Upgrade,"ax",%progbits
+ 1887              		.align	1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 48
+
+
+ 1888              		.global	State_Upgrade
+ 1889              		.syntax unified
+ 1890              		.thumb
+ 1891              		.thumb_func
+ 1893              	State_Upgrade:
+ 1894              	.LVL176:
+ 1895              	.LFB72:
+ 362:Core/Src/os-user.c **** 	//预充电压&&总压采集
+ 1896              		.loc 1 362 40 is_stmt 1 view -0
+ 1897              		.cfi_startproc
+ 1898              		@ args = 0, pretend = 0, frame = 0
+ 1899              		@ frame_needed = 0, uses_anonymous_args = 0
+ 362:Core/Src/os-user.c **** 	//预充电压&&总压采集
+ 1900              		.loc 1 362 40 is_stmt 0 view .LVU563
+ 1901 0000 10B5     		push	{r4, lr}
+ 1902              	.LCFI13:
+ 1903              		.cfi_def_cfa_offset 8
+ 1904              		.cfi_offset 4, -8
+ 1905              		.cfi_offset 14, -4
+ 364:Core/Src/os-user.c **** 	E03.State.PrechargeVoltage=PRE_Voltage();
+ 1906              		.loc 1 364 2 is_stmt 1 view .LVU564
+ 364:Core/Src/os-user.c **** 	E03.State.PrechargeVoltage=PRE_Voltage();
+ 1907              		.loc 1 364 25 is_stmt 0 view .LVU565
+ 1908 0002 FFF7FEFF 		bl	TS_Voltage
+ 1909              	.LVL177:
+ 364:Core/Src/os-user.c **** 	E03.State.PrechargeVoltage=PRE_Voltage();
+ 1910              		.loc 1 364 24 view .LVU566
+ 1911 0006 FFF7FEFF 		bl	__aeabi_f2uiz
+ 1912              	.LVL178:
+ 1913 000a 80B2     		uxth	r0, r0
+ 1914 000c 0A4C     		ldr	r4, .L177
+ 1915 000e E080     		strh	r0, [r4, #6]	@ movhi
+ 365:Core/Src/os-user.c **** 	//AIRS状态采集
+ 1916              		.loc 1 365 2 is_stmt 1 view .LVU567
+ 365:Core/Src/os-user.c **** 	//AIRS状态采集
+ 1917              		.loc 1 365 29 is_stmt 0 view .LVU568
+ 1918 0010 FFF7FEFF 		bl	PRE_Voltage
+ 1919              	.LVL179:
+ 365:Core/Src/os-user.c **** 	//AIRS状态采集
+ 1920              		.loc 1 365 28 view .LVU569
+ 1921 0014 FFF7FEFF 		bl	__aeabi_f2uiz
+ 1922              	.LVL180:
+ 1923 0018 80B2     		uxth	r0, r0
+ 1924 001a 2081     		strh	r0, [r4, #8]	@ movhi
+ 367:Core/Src/os-user.c **** 	AIRN_State();
+ 1925              		.loc 1 367 2 is_stmt 1 view .LVU570
+ 1926 001c FFF7FEFF 		bl	AIRP_State
+ 1927              	.LVL181:
+ 368:Core/Src/os-user.c **** 	PREAIR_State();
+ 1928              		.loc 1 368 2 view .LVU571
+ 1929 0020 FFF7FEFF 		bl	AIRN_State
+ 1930              	.LVL182:
+ 369:Core/Src/os-user.c **** 	//高压异常判断
+ 1931              		.loc 1 369 2 view .LVU572
+ 1932 0024 FFF7FEFF 		bl	PREAIR_State
+ 1933              	.LVL183:
+ 371:Core/Src/os-user.c **** 	//充放电过流判断
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 49
+
+
+ 1934              		.loc 1 371 2 view .LVU573
+ 1935 0028 FFF7FEFF 		bl	Vol_deviance
+ 1936              	.LVL184:
+ 373:Core/Src/os-user.c **** 	//根据温度判断风扇是否开启
+ 1937              		.loc 1 373 2 view .LVU574
+ 1938 002c FFF7FEFF 		bl	Current_detect
+ 1939              	.LVL185:
+ 375:Core/Src/os-user.c **** }
+ 1940              		.loc 1 375 2 view .LVU575
+ 1941 0030 FFF7FEFF 		bl	Fans_control
+ 1942              	.LVL186:
+ 376:Core/Src/os-user.c **** 
+ 1943              		.loc 1 376 1 is_stmt 0 view .LVU576
+ 1944 0034 10BD     		pop	{r4, pc}
+ 1945              	.L178:
+ 1946 0036 00BF     		.align	2
+ 1947              	.L177:
+ 1948 0038 00000000 		.word	E03
+ 1949              		.cfi_endproc
+ 1950              	.LFE72:
+ 1952              		.section	.text.Slave_Measure,"ax",%progbits
+ 1953              		.align	1
+ 1954              		.global	Slave_Measure
+ 1955              		.syntax unified
+ 1956              		.thumb
+ 1957              		.thumb_func
+ 1959              	Slave_Measure:
+ 1960              	.LVL187:
+ 1961              	.LFB76:
+ 466:Core/Src/os-user.c **** /*	task5 电压/温度采集
+ 467:Core/Src/os-user.c ****  * 	采集单体电压和单体温度
+ 468:Core/Src/os-user.c ****  * */
+ 469:Core/Src/os-user.c **** void Slave_Measure(void *parameterNull){
+ 1962              		.loc 1 469 40 is_stmt 1 view -0
+ 1963              		.cfi_startproc
+ 1964              		@ args = 0, pretend = 0, frame = 0
+ 1965              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1966              		.loc 1 469 40 is_stmt 0 view .LVU578
+ 1967 0000 08B5     		push	{r3, lr}
+ 1968              	.LCFI14:
+ 1969              		.cfi_def_cfa_offset 8
+ 1970              		.cfi_offset 3, -8
+ 1971              		.cfi_offset 14, -4
+ 470:Core/Src/os-user.c **** 	wakeup_sleep(Total_ic);	
+ 1972              		.loc 1 470 2 is_stmt 1 view .LVU579
+ 1973 0002 0620     		movs	r0, #6
+ 1974              	.LVL188:
+ 1975              		.loc 1 470 2 is_stmt 0 view .LVU580
+ 1976 0004 FFF7FEFF 		bl	wakeup_sleep
+ 1977              	.LVL189:
+ 471:Core/Src/os-user.c **** 	DaisyVol();		//采集单体电压
+ 1978              		.loc 1 471 2 is_stmt 1 view .LVU581
+ 1979 0008 FFF7FEFF 		bl	DaisyVol
+ 1980              	.LVL190:
+ 472:Core/Src/os-user.c **** 	DaisyTem();		//采集单体温度
+ 1981              		.loc 1 472 2 view .LVU582
+ 1982 000c FFF7FEFF 		bl	DaisyTem
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 50
+
+
+ 1983              	.LVL191:
+ 473:Core/Src/os-user.c **** }
+ 1984              		.loc 1 473 1 is_stmt 0 view .LVU583
+ 1985 0010 08BD     		pop	{r3, pc}
+ 1986              		.cfi_endproc
+ 1987              	.LFE76:
+ 1989              		.section	.text.OpenVol_Check,"ax",%progbits
+ 1990              		.align	1
+ 1991              		.global	OpenVol_Check
+ 1992              		.syntax unified
+ 1993              		.thumb
+ 1994              		.thumb_func
+ 1996              	OpenVol_Check:
+ 1997              	.LVL192:
+ 1998              	.LFB77:
+ 474:Core/Src/os-user.c **** 
+ 475:Core/Src/os-user.c **** /*	task6 断线检测
+ 476:Core/Src/os-user.c ****  * 	检测单体电压采集是否断线. 单体温度断线采集在DaisyTem已经包含, 目前�
+ 477:Core/Src/os-user.c ****  * */
+ 478:Core/Src/os-user.c **** void OpenVol_Check(void *parameterNull){
+ 1999              		.loc 1 478 40 is_stmt 1 view -0
+ 2000              		.cfi_startproc
+ 2001              		@ args = 0, pretend = 0, frame = 0
+ 2002              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2003              		.loc 1 478 40 is_stmt 0 view .LVU585
+ 2004 0000 70B5     		push	{r4, r5, r6, lr}
+ 2005              	.LCFI15:
+ 2006              		.cfi_def_cfa_offset 16
+ 2007              		.cfi_offset 4, -16
+ 2008              		.cfi_offset 5, -12
+ 2009              		.cfi_offset 6, -8
+ 2010              		.cfi_offset 14, -4
+ 479:Core/Src/os-user.c **** 	Openwire_check(&E03, Total_ic, n_Cell, Module);	//电压采集断线检测
+ 2011              		.loc 1 479 2 is_stmt 1 view .LVU586
+ 2012 0002 084E     		ldr	r6, .L183
+ 2013 0004 084D     		ldr	r5, .L183+4
+ 2014 0006 094C     		ldr	r4, .L183+8
+ 2015 0008 3346     		mov	r3, r6
+ 2016 000a 2A46     		mov	r2, r5
+ 2017 000c 0621     		movs	r1, #6
+ 2018 000e 2046     		mov	r0, r4
+ 2019              	.LVL193:
+ 2020              		.loc 1 479 2 is_stmt 0 view .LVU587
+ 2021 0010 FFF7FEFF 		bl	Openwire_check
+ 2022              	.LVL194:
+ 480:Core/Src/os-user.c **** 	save_Openwire_Temp(&E03, Total_ic, n_Cell, Module);	//温度采集断线检测
+ 2023              		.loc 1 480 2 is_stmt 1 view .LVU588
+ 2024 0014 3346     		mov	r3, r6
+ 2025 0016 2A46     		mov	r2, r5
+ 2026 0018 0621     		movs	r1, #6
+ 2027 001a 2046     		mov	r0, r4
+ 2028 001c FFF7FEFF 		bl	save_Openwire_Temp
+ 2029              	.LVL195:
+ 481:Core/Src/os-user.c **** }
+ 2030              		.loc 1 481 1 is_stmt 0 view .LVU589
+ 2031 0020 70BD     		pop	{r4, r5, r6, pc}
+ 2032              	.L184:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 51
+
+
+ 2033 0022 00BF     		.align	2
+ 2034              	.L183:
+ 2035 0024 00000000 		.word	Module
+ 2036 0028 00000000 		.word	n_Cell
+ 2037 002c 00000000 		.word	E03
+ 2038              		.cfi_endproc
+ 2039              	.LFE77:
+ 2041              		.section	.text.BMS_Can,"ax",%progbits
+ 2042              		.align	1
+ 2043              		.global	BMS_Can
+ 2044              		.syntax unified
+ 2045              		.thumb
+ 2046              		.thumb_func
+ 2048              	BMS_Can:
+ 2049              	.LVL196:
+ 2050              	.LFB78:
+ 482:Core/Src/os-user.c **** 
+ 483:Core/Src/os-user.c **** /*	task7 CAN发送
+ 484:Core/Src/os-user.c ****  * 	充电只发送外部CAN, 即只发给充电机
+ 485:Core/Src/os-user.c ****  * 	不充电内部CAN和外部CAN均发送, 内部CAN发给上位机, 外部CAN发给整车
+ 486:Core/Src/os-user.c ****  * */
+ 487:Core/Src/os-user.c **** void BMS_Can(void *parameterNull){
+ 2051              		.loc 1 487 34 is_stmt 1 view -0
+ 2052              		.cfi_startproc
+ 2053              		@ args = 0, pretend = 0, frame = 0
+ 2054              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2055              		.loc 1 487 34 is_stmt 0 view .LVU591
+ 2056 0000 08B5     		push	{r3, lr}
+ 2057              	.LCFI16:
+ 2058              		.cfi_def_cfa_offset 8
+ 2059              		.cfi_offset 3, -8
+ 2060              		.cfi_offset 14, -4
+ 488:Core/Src/os-user.c **** 	//发送Can数据
+ 489:Core/Src/os-user.c **** 	if(E03.State.Charge_flag){		//BMS接上了充电机
+ 2061              		.loc 1 489 2 is_stmt 1 view .LVU592
+ 2062              		.loc 1 489 14 is_stmt 0 view .LVU593
+ 2063 0002 064B     		ldr	r3, .L189
+ 2064 0004 1B7C     		ldrb	r3, [r3, #16]	@ zero_extendqisi2
+ 2065              		.loc 1 489 4 view .LVU594
+ 2066 0006 23B1     		cbz	r3, .L186
+ 490:Core/Src/os-user.c **** 		Can_Send_Data(ENABLE, DISABLE);		//充电CAN只发拓展帧充电数据, BDUCAN发BMS数据
+ 2067              		.loc 1 490 3 is_stmt 1 view .LVU595
+ 2068 0008 0021     		movs	r1, #0
+ 2069 000a 0120     		movs	r0, #1
+ 2070              	.LVL197:
+ 2071              		.loc 1 490 3 is_stmt 0 view .LVU596
+ 2072 000c FFF7FEFF 		bl	Can_Send_Data
+ 2073              	.LVL198:
+ 2074              	.L185:
+ 491:Core/Src/os-user.c **** 	}
+ 492:Core/Src/os-user.c **** 	else{	//不处于充电状态下的BMS
+ 493:Core/Src/os-user.c **** 		 Can_Send_Data(ENABLE, ENABLE);
+ 494:Core/Src/os-user.c **** 	}
+ 495:Core/Src/os-user.c **** }
+ 2075              		.loc 1 495 1 view .LVU597
+ 2076 0010 08BD     		pop	{r3, pc}
+ 2077              	.LVL199:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 52
+
+
+ 2078              	.L186:
+ 493:Core/Src/os-user.c **** 	}
+ 2079              		.loc 1 493 4 is_stmt 1 view .LVU598
+ 2080 0012 0121     		movs	r1, #1
+ 2081 0014 0846     		mov	r0, r1
+ 2082              	.LVL200:
+ 493:Core/Src/os-user.c **** 	}
+ 2083              		.loc 1 493 4 is_stmt 0 view .LVU599
+ 2084 0016 FFF7FEFF 		bl	Can_Send_Data
+ 2085              	.LVL201:
+ 2086              		.loc 1 495 1 view .LVU600
+ 2087 001a F9E7     		b	.L185
+ 2088              	.L190:
+ 2089              		.align	2
+ 2090              	.L189:
+ 2091 001c 00000000 		.word	E03
+ 2092              		.cfi_endproc
+ 2093              	.LFE78:
+ 2095              		.section	.text.BMS_anchor,"ax",%progbits
+ 2096              		.align	1
+ 2097              		.global	BMS_anchor
+ 2098              		.syntax unified
+ 2099              		.thumb
+ 2100              		.thumb_func
+ 2102              	BMS_anchor:
+ 2103              	.LFB79:
+ 496:Core/Src/os-user.c **** /*	task8 下点火(熄火==抛锚)判断
+ 497:Core/Src/os-user.c ****  * 	充电只发送外部CAN, 即只发给充电机
+ 498:Core/Src/os-user.c ****  * 	不充电内部CAN和外部CAN均发送, 内部CAN发给上位机, 外部CAN发给整车
+ 499:Core/Src/os-user.c ****  * */
+ 500:Core/Src/os-user.c **** void BMS_anchor(){
+ 2104              		.loc 1 500 18 is_stmt 1 view -0
+ 2105              		.cfi_startproc
+ 2106              		@ args = 0, pretend = 0, frame = 0
+ 2107              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2108              		@ link register save eliminated.
+ 501:Core/Src/os-user.c **** //更改了下电逻辑在BMS_RUN()里面, 所以这里注释掉了
+ 502:Core/Src/os-user.c **** //	if(Trigger_True){	//下点火信号中断以后经过50ms, 尚且存疑, 所以需要进行if判
+ 503:Core/Src/os-user.c **** //		if((!ON_State())&&(E03.State.BMS_State!=BMS_ERROR)){	//失去点火信号, 同时BMS正常下�
+ 504:Core/Src/os-user.c **** //			E03.State.BMS_State=BMS_SDC_OFF;
+ 505:Core/Src/os-user.c **** //			BMS_SDC_Off();
+ 506:Core/Src/os-user.c **** //			Trigger_True=0; 	//跑完后,标志位清零
+ 507:Core/Src/os-user.c **** //		}
+ 508:Core/Src/os-user.c **** //		else{	//消抖后发现满足不了条件,说明不是真正的下点火信号, 或者说因为
+ 509:Core/Src/os-user.c **** //			Trigger_True=0; //标志位清零
+ 510:Core/Src/os-user.c **** //			BMS_Tasks[anchor_NO].ItvTime=0xFFFF;
+ 511:Core/Src/os-user.c **** //			BMS_Tasks[anchor_NO].Timer=0xFFFF;
+ 512:Core/Src/os-user.c **** //		}
+ 513:Core/Src/os-user.c **** //	}
+ 514:Core/Src/os-user.c **** //	//这个else是没有触发下点火信号中断正常跑进来的, 属于无意义状态, 所�
+ 515:Core/Src/os-user.c **** //	else{
+ 516:Core/Src/os-user.c **** //		Trigger_True=0; //标志位清零
+ 517:Core/Src/os-user.c **** //		BMS_Tasks[anchor_NO].ItvTime=0xFFFF;
+ 518:Core/Src/os-user.c **** //		BMS_Tasks[anchor_NO].Timer=0xFFFF;
+ 519:Core/Src/os-user.c **** //	}
+ 520:Core/Src/os-user.c **** }
+ 2109              		.loc 1 520 1 view .LVU602
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 53
+
+
+ 2110 0000 7047     		bx	lr
+ 2111              		.cfi_endproc
+ 2112              	.LFE79:
+ 2114              		.section	.text.IMD_Detect,"ax",%progbits
+ 2115              		.align	1
+ 2116              		.global	IMD_Detect
+ 2117              		.syntax unified
+ 2118              		.thumb
+ 2119              		.thumb_func
+ 2121              	IMD_Detect:
+ 2122              	.LVL202:
+ 2123              	.LFB80:
+ 521:Core/Src/os-user.c **** /*	task9 IMD状态判断
+ 522:Core/Src/os-user.c ****  * 	读取到了报错
+ 523:Core/Src/os-user.c ****  * */
+ 524:Core/Src/os-user.c **** void IMD_Detect(void *parameterNull){
+ 2124              		.loc 1 524 37 view -0
+ 2125              		.cfi_startproc
+ 2126              		@ args = 0, pretend = 0, frame = 0
+ 2127              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2128              		.loc 1 524 37 is_stmt 0 view .LVU604
+ 2129 0000 08B5     		push	{r3, lr}
+ 2130              	.LCFI17:
+ 2131              		.cfi_def_cfa_offset 8
+ 2132              		.cfi_offset 3, -8
+ 2133              		.cfi_offset 14, -4
+ 525:Core/Src/os-user.c **** 	static u8 first_in=1;
+ 2134              		.loc 1 525 2 is_stmt 1 view .LVU605
+ 526:Core/Src/os-user.c **** 	static u8 delay_sec=0;
+ 2135              		.loc 1 526 2 view .LVU606
+ 527:Core/Src/os-user.c **** 	//在3秒后才进行IMD报故障
+ 528:Core/Src/os-user.c **** 	if(delay_sec>=6){
+ 2136              		.loc 1 528 2 view .LVU607
+ 2137              		.loc 1 528 14 is_stmt 0 view .LVU608
+ 2138 0002 114B     		ldr	r3, .L198
+ 2139 0004 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 2140              		.loc 1 528 4 view .LVU609
+ 2141 0006 052B     		cmp	r3, #5
+ 2142 0008 03D8     		bhi	.L197
+ 529:Core/Src/os-user.c **** 		if(IMD_State()&&first_in){	//如果检查到IMD出现故障(IMD_State函数返回1), 会进入该
+ 530:Core/Src/os-user.c **** 			HAL_Delay(5);	//消抖
+ 531:Core/Src/os-user.c **** 			if(IMD_State()){
+ 532:Core/Src/os-user.c **** 				E03.Alarm.IMD_Error=1;	//设置故障位
+ 533:Core/Src/os-user.c **** 				first_in=0;	//不要再第二次进入这个函数了, 因为我觉得持续地让单片机每�
+ 534:Core/Src/os-user.c **** 			}
+ 535:Core/Src/os-user.c **** 			else{
+ 536:Core/Src/os-user.c **** 				first_in=1;	//说明只是一点小小的扰动, 应该让这个函数继续跑
+ 537:Core/Src/os-user.c **** 			}
+ 538:Core/Src/os-user.c **** 		}
+ 539:Core/Src/os-user.c **** 	}
+ 540:Core/Src/os-user.c **** 	else{
+ 541:Core/Src/os-user.c **** 		delay_sec++;
+ 2143              		.loc 1 541 3 is_stmt 1 view .LVU610
+ 2144              		.loc 1 541 12 is_stmt 0 view .LVU611
+ 2145 000a 0133     		adds	r3, r3, #1
+ 2146 000c 0E4A     		ldr	r2, .L198
+ 2147 000e 1370     		strb	r3, [r2]
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 54
+
+
+ 2148              	.LVL203:
+ 2149              	.L192:
+ 542:Core/Src/os-user.c **** 	}
+ 543:Core/Src/os-user.c **** }
+ 2150              		.loc 1 543 1 view .LVU612
+ 2151 0010 08BD     		pop	{r3, pc}
+ 2152              	.LVL204:
+ 2153              	.L197:
+ 529:Core/Src/os-user.c **** 		if(IMD_State()&&first_in){	//如果检查到IMD出现故障(IMD_State函数返回1), 会进入该
+ 2154              		.loc 1 529 3 is_stmt 1 view .LVU613
+ 529:Core/Src/os-user.c **** 		if(IMD_State()&&first_in){	//如果检查到IMD出现故障(IMD_State函数返回1), 会进入该
+ 2155              		.loc 1 529 6 is_stmt 0 view .LVU614
+ 2156 0012 FFF7FEFF 		bl	IMD_State
+ 2157              	.LVL205:
+ 529:Core/Src/os-user.c **** 		if(IMD_State()&&first_in){	//如果检查到IMD出现故障(IMD_State函数返回1), 会进入该
+ 2158              		.loc 1 529 5 view .LVU615
+ 2159 0016 0028     		cmp	r0, #0
+ 2160 0018 FAD0     		beq	.L192
+ 529:Core/Src/os-user.c **** 		if(IMD_State()&&first_in){	//如果检查到IMD出现故障(IMD_State函数返回1), 会进入该
+ 2161              		.loc 1 529 17 discriminator 1 view .LVU616
+ 2162 001a 0C4B     		ldr	r3, .L198+4
+ 2163 001c 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 2164 001e 002B     		cmp	r3, #0
+ 2165 0020 F6D0     		beq	.L192
+ 530:Core/Src/os-user.c **** 			if(IMD_State()){
+ 2166              		.loc 1 530 4 is_stmt 1 view .LVU617
+ 2167 0022 0520     		movs	r0, #5
+ 2168 0024 FFF7FEFF 		bl	HAL_Delay
+ 2169              	.LVL206:
+ 531:Core/Src/os-user.c **** 				E03.Alarm.IMD_Error=1;	//设置故障位
+ 2170              		.loc 1 531 4 view .LVU618
+ 531:Core/Src/os-user.c **** 				E03.Alarm.IMD_Error=1;	//设置故障位
+ 2171              		.loc 1 531 7 is_stmt 0 view .LVU619
+ 2172 0028 FFF7FEFF 		bl	IMD_State
+ 2173              	.LVL207:
+ 531:Core/Src/os-user.c **** 				E03.Alarm.IMD_Error=1;	//设置故障位
+ 2174              		.loc 1 531 6 view .LVU620
+ 2175 002c 38B1     		cbz	r0, .L195
+ 532:Core/Src/os-user.c **** 				first_in=0;	//不要再第二次进入这个函数了, 因为我觉得持续地让单片机每�
+ 2176              		.loc 1 532 5 is_stmt 1 view .LVU621
+ 532:Core/Src/os-user.c **** 				first_in=0;	//不要再第二次进入这个函数了, 因为我觉得持续地让单片机每�
+ 2177              		.loc 1 532 24 is_stmt 0 view .LVU622
+ 2178 002e 084B     		ldr	r3, .L198+8
+ 2179 0030 0122     		movs	r2, #1
+ 2180 0032 83F84F21 		strb	r2, [r3, #335]
+ 533:Core/Src/os-user.c **** 			}
+ 2181              		.loc 1 533 5 is_stmt 1 view .LVU623
+ 533:Core/Src/os-user.c **** 			}
+ 2182              		.loc 1 533 13 is_stmt 0 view .LVU624
+ 2183 0036 054B     		ldr	r3, .L198+4
+ 2184 0038 0022     		movs	r2, #0
+ 2185 003a 1A70     		strb	r2, [r3]
+ 2186 003c E8E7     		b	.L192
+ 2187              	.L195:
+ 536:Core/Src/os-user.c **** 			}
+ 2188              		.loc 1 536 5 is_stmt 1 view .LVU625
+ 536:Core/Src/os-user.c **** 			}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 55
+
+
+ 2189              		.loc 1 536 13 is_stmt 0 view .LVU626
+ 2190 003e 034B     		ldr	r3, .L198+4
+ 2191 0040 0122     		movs	r2, #1
+ 2192 0042 1A70     		strb	r2, [r3]
+ 2193 0044 E4E7     		b	.L192
+ 2194              	.L199:
+ 2195 0046 00BF     		.align	2
+ 2196              	.L198:
+ 2197 0048 00000000 		.word	.LANCHOR4
+ 2198 004c 00000000 		.word	.LANCHOR5
+ 2199 0050 00000000 		.word	E03
+ 2200              		.cfi_endproc
+ 2201              	.LFE80:
+ 2203              		.global	taskManager
+ 2204              		.global	Trigger_True
+ 2205              		.global	Can_Charge_Count
+ 2206              		.global	Hall_Count
+ 2207              		.global	IMD_Detect_Hanlde
+ 2208              		.global	BMS_Can_Handle
+ 2209              		.global	OpenVol_Check_Handle
+ 2210              		.global	Slave_Measure_Handle
+ 2211              		.global	State_Upgrade_Handle
+ 2212              		.global	Hall_Timeout_Handle
+ 2213              		.global	BMS_StateMachine_Handle
+ 2214              		.global	charge_ing_Handle
+ 2215              		.global	Precharge_Run_Handle
+ 2216              		.section	.bss.BMS_Can_Handle,"aw",%nobits
+ 2217              		.align	2
+ 2220              	BMS_Can_Handle:
+ 2221 0000 00000000 		.space	20
+ 2221      00000000 
+ 2221      00000000 
+ 2221      00000000 
+ 2221      00000000 
+ 2222              		.section	.bss.BMS_StateMachine_Handle,"aw",%nobits
+ 2223              		.align	2
+ 2226              	BMS_StateMachine_Handle:
+ 2227 0000 00000000 		.space	20
+ 2227      00000000 
+ 2227      00000000 
+ 2227      00000000 
+ 2227      00000000 
+ 2228              		.section	.bss.Can_Charge_Count,"aw",%nobits
+ 2231              	Can_Charge_Count:
+ 2232 0000 00       		.space	1
+ 2233              		.section	.bss.Hall_Count,"aw",%nobits
+ 2234              		.set	.LANCHOR2,. + 0
+ 2237              	Hall_Count:
+ 2238 0000 00       		.space	1
+ 2239              		.section	.bss.Hall_Timeout_Handle,"aw",%nobits
+ 2240              		.align	2
+ 2243              	Hall_Timeout_Handle:
+ 2244 0000 00000000 		.space	20
+ 2244      00000000 
+ 2244      00000000 
+ 2244      00000000 
+ 2244      00000000 
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 56
+
+
+ 2245              		.section	.bss.IMD_Detect_Hanlde,"aw",%nobits
+ 2246              		.align	2
+ 2249              	IMD_Detect_Hanlde:
+ 2250 0000 00000000 		.space	20
+ 2250      00000000 
+ 2250      00000000 
+ 2250      00000000 
+ 2250      00000000 
+ 2251              		.section	.bss.OpenVol_Check_Handle,"aw",%nobits
+ 2252              		.align	2
+ 2255              	OpenVol_Check_Handle:
+ 2256 0000 00000000 		.space	20
+ 2256      00000000 
+ 2256      00000000 
+ 2256      00000000 
+ 2256      00000000 
+ 2257              		.section	.bss.Precharge_Run_Handle,"aw",%nobits
+ 2258              		.align	2
+ 2259              		.set	.LANCHOR1,. + 0
+ 2262              	Precharge_Run_Handle:
+ 2263 0000 00000000 		.space	20
+ 2263      00000000 
+ 2263      00000000 
+ 2263      00000000 
+ 2263      00000000 
+ 2264              		.section	.bss.Slave_Measure_Handle,"aw",%nobits
+ 2265              		.align	2
+ 2268              	Slave_Measure_Handle:
+ 2269 0000 00000000 		.space	20
+ 2269      00000000 
+ 2269      00000000 
+ 2269      00000000 
+ 2269      00000000 
+ 2270              		.section	.bss.State_Upgrade_Handle,"aw",%nobits
+ 2271              		.align	2
+ 2274              	State_Upgrade_Handle:
+ 2275 0000 00000000 		.space	20
+ 2275      00000000 
+ 2275      00000000 
+ 2275      00000000 
+ 2275      00000000 
+ 2276              		.section	.bss.Trigger_True,"aw",%nobits
+ 2279              	Trigger_True:
+ 2280 0000 00       		.space	1
+ 2281              		.section	.bss.Vol_deverror.2,"aw",%nobits
+ 2282              		.set	.LANCHOR3,. + 0
+ 2285              	Vol_deverror.2:
+ 2286 0000 00       		.space	1
+ 2287              		.section	.bss.charge_ing_Handle,"aw",%nobits
+ 2288              		.align	2
+ 2291              	charge_ing_Handle:
+ 2292 0000 00000000 		.space	20
+ 2292      00000000 
+ 2292      00000000 
+ 2292      00000000 
+ 2292      00000000 
+ 2293              		.section	.bss.delay_sec.1,"aw",%nobits
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 57
+
+
+ 2294              		.set	.LANCHOR4,. + 0
+ 2297              	delay_sec.1:
+ 2298 0000 00       		.space	1
+ 2299              		.section	.bss.taskManager,"aw",%nobits
+ 2300              		.align	2
+ 2301              		.set	.LANCHOR0,. + 0
+ 2304              	taskManager:
+ 2305 0000 00000000 		.space	8
+ 2305      00000000 
+ 2306              		.section	.data.first_in.0,"aw"
+ 2307              		.set	.LANCHOR5,. + 0
+ 2310              	first_in.0:
+ 2311 0000 01       		.byte	1
+ 2312              		.text
+ 2313              	.Letext0:
+ 2314              		.file 2 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\machine\\_default_types.h"
+ 2315              		.file 3 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\sys\\_stdint.h"
+ 2316              		.file 4 "Core/Inc/data-user.h"
+ 2317              		.file 5 "Core/Inc/os-user.h"
+ 2318              		.file 6 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f1xx.h"
+ 2319              		.file 7 "Core/Inc/daisy-user.h"
+ 2320              		.file 8 "Core/Inc/can-user.h"
+ 2321              		.file 9 "Core/Inc/ltc681x-user.h"
+ 2322              		.file 10 "Core/Inc/relay-user.h"
+ 2323              		.file 11 "Core/Inc/adc-user.h"
+ 2324              		.file 12 "Core/Inc/state-user.h"
+ 2325              		.file 13 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h"
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 58
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 os-user.c
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:18     .text.TaskCreate:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:24     .text.TaskCreate:00000000 TaskCreate
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:99     .text.TaskCreate:0000002c $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:104    .text.TaskDelete:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:110    .text.TaskDelete:00000000 TaskDelete
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:190    .text.TaskDelete:00000038 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:195    .text.TaskStatusUpdate:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:201    .text.TaskStatusUpdate:00000000 TaskStatusUpdate
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:258    .text.TaskStatusUpdate:0000002c $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:263    .text.TaskScheduler:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:269    .text.TaskScheduler:00000000 TaskScheduler
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:337    .text.TaskScheduler:00000030 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:347    .text.Precharge_Run:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:353    .text.Precharge_Run:00000000 Precharge_Run
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1121   .text.Precharge_Run:000002a0 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1130   .text.charge_ing:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1136   .text.charge_ing:00000000 charge_ing
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1215   .text.charge_ing:00000044 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1220   .text.Hall_Timeout:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1226   .text.Hall_Timeout:00000000 Hall_Timeout
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1342   .text.Hall_Timeout:0000008c $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1348   .text.Vol_deviance:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1354   .text.Vol_deviance:00000000 Vol_deviance
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1554   .text.Vol_deviance:000000ec $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1560   .text.Current_detect:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1566   .text.Current_detect:00000000 Current_detect
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1778   .text.Current_detect:00000118 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1784   .text.Fans_control:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1790   .text.Fans_control:00000000 Fans_control
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1882   .text.Fans_control:00000078 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1887   .text.State_Upgrade:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1893   .text.State_Upgrade:00000000 State_Upgrade
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1948   .text.State_Upgrade:00000038 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1953   .text.Slave_Measure:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1959   .text.Slave_Measure:00000000 Slave_Measure
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1990   .text.OpenVol_Check:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:1996   .text.OpenVol_Check:00000000 OpenVol_Check
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2035   .text.OpenVol_Check:00000024 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2042   .text.BMS_Can:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2048   .text.BMS_Can:00000000 BMS_Can
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2091   .text.BMS_Can:0000001c $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2096   .text.BMS_anchor:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2102   .text.BMS_anchor:00000000 BMS_anchor
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2115   .text.IMD_Detect:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2121   .text.IMD_Detect:00000000 IMD_Detect
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2197   .text.IMD_Detect:00000048 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2304   .bss.taskManager:00000000 taskManager
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2279   .bss.Trigger_True:00000000 Trigger_True
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2231   .bss.Can_Charge_Count:00000000 Can_Charge_Count
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2237   .bss.Hall_Count:00000000 Hall_Count
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2249   .bss.IMD_Detect_Hanlde:00000000 IMD_Detect_Hanlde
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2220   .bss.BMS_Can_Handle:00000000 BMS_Can_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2255   .bss.OpenVol_Check_Handle:00000000 OpenVol_Check_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2268   .bss.Slave_Measure_Handle:00000000 Slave_Measure_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2274   .bss.State_Upgrade_Handle:00000000 State_Upgrade_Handle
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s 			page 59
+
+
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2243   .bss.Hall_Timeout_Handle:00000000 Hall_Timeout_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2226   .bss.BMS_StateMachine_Handle:00000000 BMS_StateMachine_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2291   .bss.charge_ing_Handle:00000000 charge_ing_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2262   .bss.Precharge_Run_Handle:00000000 Precharge_Run_Handle
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2217   .bss.BMS_Can_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2223   .bss.BMS_StateMachine_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2232   .bss.Can_Charge_Count:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2238   .bss.Hall_Count:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2240   .bss.Hall_Timeout_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2246   .bss.IMD_Detect_Hanlde:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2252   .bss.OpenVol_Check_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2258   .bss.Precharge_Run_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2265   .bss.Slave_Measure_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2271   .bss.State_Upgrade_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2280   .bss.Trigger_True:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2285   .bss.Vol_deverror.2:00000000 Vol_deverror.2
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2286   .bss.Vol_deverror.2:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2288   .bss.charge_ing_Handle:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2297   .bss.delay_sec.1:00000000 delay_sec.1
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2298   .bss.delay_sec.1:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2300   .bss.taskManager:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc6XouB1.s:2310   .data.first_in.0:00000000 first_in.0
+
+UNDEFINED SYMBOLS
+__aeabi_f2uiz
+__aeabi_i2d
+__aeabi_dmul
+__aeabi_ddiv
+__aeabi_dcmpgt
+TS_Voltage
+PRE_Voltage
+AIRP_ON
+AIRN_ON
+PrechargeAIR_OFF
+HAL_Delay
+Charge_detect
+Run_detect
+Error
+E03
+Can_Send_Charge
+Fans_OFF
+Fans_ON
+AIRP_State
+AIRN_State
+PREAIR_State
+wakeup_sleep
+DaisyVol
+DaisyTem
+Openwire_check
+save_Openwire_Temp
+Module
+n_Cell
+Can_Send_Data
+IMD_State

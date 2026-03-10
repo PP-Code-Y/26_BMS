@@ -1,0 +1,2203 @@
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"can-user.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.can1_interal_config,"ax",%progbits
+  18              		.align	1
+  19              		.global	can1_interal_config
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  24              	can1_interal_config:
+  25              	.LFB65:
+  26              		.file 1 "Core/Src/can-user.c"
+   1:Core/Src/can-user.c **** /*
+   2:Core/Src/can-user.c ****  * can.c
+   3:Core/Src/can-user.c ****  *
+   4:Core/Src/can-user.c ****  *  Created on: 2022年3月6日
+   5:Core/Src/can-user.c ****  *      Author: BBBBB
+   6:Core/Src/can-user.c ****  */
+   7:Core/Src/can-user.c **** 
+   8:Core/Src/can-user.c **** 
+   9:Core/Src/can-user.c **** #include "can-user.h"
+  10:Core/Src/can-user.c **** #include "os-user.h"
+  11:Core/Src/can-user.c **** #include "state-user.h"
+  12:Core/Src/can-user.c **** #include "relay-user.h"
+  13:Core/Src/can-user.c **** #include "flash-user.h"
+  14:Core/Src/can-user.c **** 
+  15:Core/Src/can-user.c **** extern CAN_HandleTypeDef hcan1;
+  16:Core/Src/can-user.c **** extern CAN_HandleTypeDef hcan2;
+  17:Core/Src/can-user.c **** extern BMS E03;
+  18:Core/Src/can-user.c **** extern vu8 Hall_Count;
+  19:Core/Src/can-user.c **** vu8 charge_cur_count=0;	//初值为0, 用于统计充电电流CAN数据发了多少次, 当单体�
+  20:Core/Src/can-user.c **** 
+  21:Core/Src/can-user.c **** void can1_interal_config(){
+  27              		.loc 1 21 27 view -0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 40
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 00B5     		push	{lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 4
+  34              		.cfi_offset 14, -4
+  35 0002 8BB0     		sub	sp, sp, #44
+  36              	.LCFI1:
+  37              		.cfi_def_cfa_offset 48
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 2
+
+
+  22:Core/Src/can-user.c **** 	HAL_StatusTypeDef HAL_Status;
+  38              		.loc 1 22 2 view .LVU1
+  23:Core/Src/can-user.c **** 	CAN_FilterTypeDef CAN_Filter;
+  39              		.loc 1 23 2 view .LVU2
+  24:Core/Src/can-user.c **** 	CAN_Filter.FilterBank = 0;	//第一个滤波器
+  40              		.loc 1 24 2 view .LVU3
+  41              		.loc 1 24 24 is_stmt 0 view .LVU4
+  42 0004 0023     		movs	r3, #0
+  43 0006 0593     		str	r3, [sp, #20]
+  25:Core/Src/can-user.c **** 	CAN_Filter.FilterMode = CAN_FILTERMODE_IDMASK;
+  44              		.loc 1 25 2 is_stmt 1 view .LVU5
+  45              		.loc 1 25 24 is_stmt 0 view .LVU6
+  46 0008 0693     		str	r3, [sp, #24]
+  26:Core/Src/can-user.c **** 	CAN_Filter.FilterScale= CAN_FILTERSCALE_16BIT ; 	//开启16位掩码模式
+  47              		.loc 1 26 2 is_stmt 1 view .LVU7
+  48              		.loc 1 26 24 is_stmt 0 view .LVU8
+  49 000a 0793     		str	r3, [sp, #28]
+  27:Core/Src/can-user.c **** 	CAN_Filter.FilterIdHigh = 0xFFFF<<5;	//电流传感器CAN信号
+  50              		.loc 1 27 2 is_stmt 1 view .LVU9
+  51              		.loc 1 27 26 is_stmt 0 view .LVU10
+  52 000c 114A     		ldr	r2, .L9
+  53 000e 0092     		str	r2, [sp]
+  28:Core/Src/can-user.c **** 	CAN_Filter.FilterIdLow = 0x3c3<<5;		//ID唯一, 必须筛出来
+  54              		.loc 1 28 2 is_stmt 1 view .LVU11
+  55              		.loc 1 28 25 is_stmt 0 view .LVU12
+  56 0010 47F66002 		movw	r2, #30816
+  57 0014 0192     		str	r2, [sp, #4]
+  29:Core/Src/can-user.c **** 	CAN_Filter.FilterMaskIdHigh = 0; 		//对上位机发进来的先不进行滤波了
+  58              		.loc 1 29 2 is_stmt 1 view .LVU13
+  59              		.loc 1 29 30 is_stmt 0 view .LVU14
+  60 0016 0293     		str	r3, [sp, #8]
+  30:Core/Src/can-user.c **** 	CAN_Filter.FilterMaskIdLow = 0;
+  61              		.loc 1 30 2 is_stmt 1 view .LVU15
+  62              		.loc 1 30 29 is_stmt 0 view .LVU16
+  63 0018 0393     		str	r3, [sp, #12]
+  31:Core/Src/can-user.c **** 	CAN_Filter.FilterFIFOAssignment=CAN_FILTER_FIFO0;
+  64              		.loc 1 31 2 is_stmt 1 view .LVU17
+  65              		.loc 1 31 33 is_stmt 0 view .LVU18
+  66 001a 0493     		str	r3, [sp, #16]
+  32:Core/Src/can-user.c **** 	CAN_Filter.FilterActivation=ENABLE; 	//使能过滤器
+  67              		.loc 1 32 2 is_stmt 1 view .LVU19
+  68              		.loc 1 32 29 is_stmt 0 view .LVU20
+  69 001c 0123     		movs	r3, #1
+  70 001e 0893     		str	r3, [sp, #32]
+  33:Core/Src/can-user.c **** 
+  34:Core/Src/can-user.c **** 	if( HAL_OK != HAL_CAN_ConfigFilter(&hcan1, &CAN_Filter)){	//配置CAN接收过滤器
+  71              		.loc 1 34 2 is_stmt 1 view .LVU21
+  72              		.loc 1 34 16 is_stmt 0 view .LVU22
+  73 0020 6946     		mov	r1, sp
+  74 0022 0D48     		ldr	r0, .L9+4
+  75 0024 FFF7FEFF 		bl	HAL_CAN_ConfigFilter
+  76              	.LVL0:
+  77              		.loc 1 34 4 view .LVU23
+  78 0028 58B9     		cbnz	r0, .L6
+  79              	.L2:
+  35:Core/Src/can-user.c **** 		Error_Handler();
+  36:Core/Src/can-user.c **** 	}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 3
+
+
+  37:Core/Src/can-user.c **** 	HAL_Status = HAL_CAN_Start(&hcan1);	//开启CAN
+  80              		.loc 1 37 2 is_stmt 1 view .LVU24
+  81              		.loc 1 37 15 is_stmt 0 view .LVU25
+  82 002a 0B48     		ldr	r0, .L9+4
+  83 002c FFF7FEFF 		bl	HAL_CAN_Start
+  84              	.LVL1:
+  38:Core/Src/can-user.c **** 	if(HAL_Status!=HAL_OK){
+  85              		.loc 1 38 2 is_stmt 1 view .LVU26
+  86              		.loc 1 38 4 is_stmt 0 view .LVU27
+  87 0030 50B9     		cbnz	r0, .L7
+  88              	.LVL2:
+  89              	.L3:
+  39:Core/Src/can-user.c **** 		Error_Handler();
+  40:Core/Src/can-user.c **** 	}
+  41:Core/Src/can-user.c **** 	// Activate CAN RX notification (HERE WE attach FIFO0 to CAN1) called "CAN0" in manual
+  42:Core/Src/can-user.c **** 	if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK){
+  90              		.loc 1 42 2 is_stmt 1 view .LVU28
+  91              		.loc 1 42 6 is_stmt 0 view .LVU29
+  92 0032 0221     		movs	r1, #2
+  93 0034 0848     		ldr	r0, .L9+4
+  94 0036 FFF7FEFF 		bl	HAL_CAN_ActivateNotification
+  95              	.LVL3:
+  96              		.loc 1 42 5 view .LVU30
+  97 003a 40B9     		cbnz	r0, .L8
+  98              	.L1:
+  43:Core/Src/can-user.c **** 		Error_Handler();
+  44:Core/Src/can-user.c **** 	}
+  45:Core/Src/can-user.c **** //	//	//是否开启TX中断有待商榷
+  46:Core/Src/can-user.c **** //	// Activate CAN TX notification
+  47:Core/Src/can-user.c **** //	if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK){
+  48:Core/Src/can-user.c **** //		Error_Handler();
+  49:Core/Src/can-user.c **** //	}
+  50:Core/Src/can-user.c **** 	// end added bymc
+  51:Core/Src/can-user.c **** }
+  99              		.loc 1 51 1 view .LVU31
+ 100 003c 0BB0     		add	sp, sp, #44
+ 101              	.LCFI2:
+ 102              		.cfi_remember_state
+ 103              		.cfi_def_cfa_offset 4
+ 104              		@ sp needed
+ 105 003e 5DF804FB 		ldr	pc, [sp], #4
+ 106              	.L6:
+ 107              	.LCFI3:
+ 108              		.cfi_restore_state
+  35:Core/Src/can-user.c **** 	}
+ 109              		.loc 1 35 3 is_stmt 1 view .LVU32
+ 110 0042 FFF7FEFF 		bl	Error_Handler
+ 111              	.LVL4:
+ 112 0046 F0E7     		b	.L2
+ 113              	.LVL5:
+ 114              	.L7:
+  39:Core/Src/can-user.c **** 		Error_Handler();
+ 115              		.loc 1 39 3 view .LVU33
+ 116 0048 FFF7FEFF 		bl	Error_Handler
+ 117              	.LVL6:
+  39:Core/Src/can-user.c **** 		Error_Handler();
+ 118              		.loc 1 39 3 is_stmt 0 view .LVU34
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 4
+
+
+ 119 004c F1E7     		b	.L3
+ 120              	.L8:
+  43:Core/Src/can-user.c **** 		Error_Handler();
+ 121              		.loc 1 43 3 is_stmt 1 view .LVU35
+ 122 004e FFF7FEFF 		bl	Error_Handler
+ 123              	.LVL7:
+ 124              		.loc 1 51 1 is_stmt 0 view .LVU36
+ 125 0052 F3E7     		b	.L1
+ 126              	.L10:
+ 127              		.align	2
+ 128              	.L9:
+ 129 0054 E0FF1F00 		.word	2097120
+ 130 0058 00000000 		.word	hcan1
+ 131              		.cfi_endproc
+ 132              	.LFE65:
+ 134              		.section	.text.can2_exteral_config,"ax",%progbits
+ 135              		.align	1
+ 136              		.global	can2_exteral_config
+ 137              		.syntax unified
+ 138              		.thumb
+ 139              		.thumb_func
+ 141              	can2_exteral_config:
+ 142              	.LFB66:
+  52:Core/Src/can-user.c **** 
+  53:Core/Src/can-user.c **** void can2_exteral_config(){
+ 143              		.loc 1 53 27 is_stmt 1 view -0
+ 144              		.cfi_startproc
+ 145              		@ args = 0, pretend = 0, frame = 40
+ 146              		@ frame_needed = 0, uses_anonymous_args = 0
+ 147 0000 00B5     		push	{lr}
+ 148              	.LCFI4:
+ 149              		.cfi_def_cfa_offset 4
+ 150              		.cfi_offset 14, -4
+ 151 0002 8BB0     		sub	sp, sp, #44
+ 152              	.LCFI5:
+ 153              		.cfi_def_cfa_offset 48
+  54:Core/Src/can-user.c **** 	HAL_StatusTypeDef HAL_Status;
+ 154              		.loc 1 54 2 view .LVU38
+  55:Core/Src/can-user.c **** 	CAN_FilterTypeDef CAN_Filter;
+ 155              		.loc 1 55 2 view .LVU39
+  56:Core/Src/can-user.c **** 	CAN_Filter.FilterBank = 14;	//第14个滤波器, 对于CAN2
+ 156              		.loc 1 56 2 view .LVU40
+ 157              		.loc 1 56 24 is_stmt 0 view .LVU41
+ 158 0004 0E22     		movs	r2, #14
+ 159 0006 0592     		str	r2, [sp, #20]
+  57:Core/Src/can-user.c **** 	CAN_Filter.FilterMode = CAN_FILTERMODE_IDLIST;
+ 160              		.loc 1 57 2 is_stmt 1 view .LVU42
+ 161              		.loc 1 57 24 is_stmt 0 view .LVU43
+ 162 0008 0123     		movs	r3, #1
+ 163 000a 0693     		str	r3, [sp, #24]
+  58:Core/Src/can-user.c **** 	CAN_Filter.FilterScale= CAN_FILTERSCALE_32BIT ; 	//开启32位列表模式
+ 164              		.loc 1 58 2 is_stmt 1 view .LVU44
+ 165              		.loc 1 58 24 is_stmt 0 view .LVU45
+ 166 000c 0793     		str	r3, [sp, #28]
+  59:Core/Src/can-user.c **** 	CAN_Filter.FilterIdHigh = 0xC7FA;		//充电信号:0x18FF50E5, HIGH有公式((0x18FF50E5<<3)>>16)&0
+ 167              		.loc 1 59 2 is_stmt 1 view .LVU46
+ 168              		.loc 1 59 26 is_stmt 0 view .LVU47
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 5
+
+
+ 169 000e 4CF2FA71 		movw	r1, #51194
+ 170 0012 0091     		str	r1, [sp]
+  60:Core/Src/can-user.c **** 	CAN_Filter.FilterIdLow = 0x872C;		//LOW有公式(0x18FF50E5<<3)&0xffff|CAN_ID_EXT, 其中CAN_ID_EX
+ 171              		.loc 1 60 2 is_stmt 1 view .LVU48
+ 172              		.loc 1 60 25 is_stmt 0 view .LVU49
+ 173 0014 48F22C71 		movw	r1, #34604
+ 174 0018 0191     		str	r1, [sp, #4]
+  61:Core/Src/can-user.c **** 	CAN_Filter.FilterMaskIdHigh = 0; 		//对上位机发进来的先不进行滤波了
+ 175              		.loc 1 61 2 is_stmt 1 view .LVU50
+ 176              		.loc 1 61 30 is_stmt 0 view .LVU51
+ 177 001a 0021     		movs	r1, #0
+ 178 001c 0291     		str	r1, [sp, #8]
+  62:Core/Src/can-user.c **** 	CAN_Filter.FilterMaskIdLow = 0;
+ 179              		.loc 1 62 2 is_stmt 1 view .LVU52
+ 180              		.loc 1 62 29 is_stmt 0 view .LVU53
+ 181 001e 0391     		str	r1, [sp, #12]
+  63:Core/Src/can-user.c **** 	CAN_Filter.FilterFIFOAssignment=CAN_FILTER_FIFO1;
+ 182              		.loc 1 63 2 is_stmt 1 view .LVU54
+ 183              		.loc 1 63 33 is_stmt 0 view .LVU55
+ 184 0020 0493     		str	r3, [sp, #16]
+  64:Core/Src/can-user.c **** 	CAN_Filter.FilterActivation=ENABLE; 	//使能过滤器
+ 185              		.loc 1 64 2 is_stmt 1 view .LVU56
+ 186              		.loc 1 64 29 is_stmt 0 view .LVU57
+ 187 0022 0893     		str	r3, [sp, #32]
+  65:Core/Src/can-user.c **** 	CAN_Filter.SlaveStartFilterBank = 14;
+ 188              		.loc 1 65 2 is_stmt 1 view .LVU58
+ 189              		.loc 1 65 34 is_stmt 0 view .LVU59
+ 190 0024 0992     		str	r2, [sp, #36]
+  66:Core/Src/can-user.c **** 
+  67:Core/Src/can-user.c **** 	if( HAL_OK != HAL_CAN_ConfigFilter(&hcan2, &CAN_Filter)){
+ 191              		.loc 1 67 2 is_stmt 1 view .LVU60
+ 192              		.loc 1 67 16 is_stmt 0 view .LVU61
+ 193 0026 6946     		mov	r1, sp
+ 194 0028 0C48     		ldr	r0, .L19
+ 195 002a FFF7FEFF 		bl	HAL_CAN_ConfigFilter
+ 196              	.LVL8:
+ 197              		.loc 1 67 4 view .LVU62
+ 198 002e 58B9     		cbnz	r0, .L16
+ 199              	.L12:
+  68:Core/Src/can-user.c **** 		Error_Handler();
+  69:Core/Src/can-user.c **** 	}
+  70:Core/Src/can-user.c **** 	HAL_Status = HAL_CAN_Start(&hcan2);
+ 200              		.loc 1 70 2 is_stmt 1 view .LVU63
+ 201              		.loc 1 70 15 is_stmt 0 view .LVU64
+ 202 0030 0A48     		ldr	r0, .L19
+ 203 0032 FFF7FEFF 		bl	HAL_CAN_Start
+ 204              	.LVL9:
+  71:Core/Src/can-user.c **** 	if(HAL_Status!=HAL_OK){
+ 205              		.loc 1 71 2 is_stmt 1 view .LVU65
+ 206              		.loc 1 71 4 is_stmt 0 view .LVU66
+ 207 0036 50B9     		cbnz	r0, .L17
+ 208              	.LVL10:
+ 209              	.L13:
+  72:Core/Src/can-user.c **** 		Error_Handler();
+  73:Core/Src/can-user.c **** 	}
+  74:Core/Src/can-user.c **** 	// Activate CAN RX notification (HERE WE attach FIFO1 to CAN2) called "CAN0" in manual
+  75:Core/Src/can-user.c **** 	if (HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK){
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 6
+
+
+ 210              		.loc 1 75 2 is_stmt 1 view .LVU67
+ 211              		.loc 1 75 6 is_stmt 0 view .LVU68
+ 212 0038 1021     		movs	r1, #16
+ 213 003a 0848     		ldr	r0, .L19
+ 214 003c FFF7FEFF 		bl	HAL_CAN_ActivateNotification
+ 215              	.LVL11:
+ 216              		.loc 1 75 5 view .LVU69
+ 217 0040 40B9     		cbnz	r0, .L18
+ 218              	.L11:
+  76:Core/Src/can-user.c **** 		Error_Handler();
+  77:Core/Src/can-user.c **** 	}
+  78:Core/Src/can-user.c **** //	//是否开启TX中断有待商榷
+  79:Core/Src/can-user.c **** //	// Activate CAN TX notification
+  80:Core/Src/can-user.c **** //	if (HAL_CAN_ActivateNotification(&hcan2, CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK){
+  81:Core/Src/can-user.c **** //		Error_Handler();
+  82:Core/Src/can-user.c **** //	}
+  83:Core/Src/can-user.c **** 	// end added bymc
+  84:Core/Src/can-user.c **** }
+ 219              		.loc 1 84 1 view .LVU70
+ 220 0042 0BB0     		add	sp, sp, #44
+ 221              	.LCFI6:
+ 222              		.cfi_remember_state
+ 223              		.cfi_def_cfa_offset 4
+ 224              		@ sp needed
+ 225 0044 5DF804FB 		ldr	pc, [sp], #4
+ 226              	.L16:
+ 227              	.LCFI7:
+ 228              		.cfi_restore_state
+  68:Core/Src/can-user.c **** 	}
+ 229              		.loc 1 68 3 is_stmt 1 view .LVU71
+ 230 0048 FFF7FEFF 		bl	Error_Handler
+ 231              	.LVL12:
+ 232 004c F0E7     		b	.L12
+ 233              	.LVL13:
+ 234              	.L17:
+  72:Core/Src/can-user.c **** 		Error_Handler();
+ 235              		.loc 1 72 3 view .LVU72
+ 236 004e FFF7FEFF 		bl	Error_Handler
+ 237              	.LVL14:
+  72:Core/Src/can-user.c **** 		Error_Handler();
+ 238              		.loc 1 72 3 is_stmt 0 view .LVU73
+ 239 0052 F1E7     		b	.L13
+ 240              	.L18:
+  76:Core/Src/can-user.c **** 		Error_Handler();
+ 241              		.loc 1 76 3 is_stmt 1 view .LVU74
+ 242 0054 FFF7FEFF 		bl	Error_Handler
+ 243              	.LVL15:
+ 244              		.loc 1 84 1 is_stmt 0 view .LVU75
+ 245 0058 F3E7     		b	.L11
+ 246              	.L20:
+ 247 005a 00BF     		.align	2
+ 248              	.L19:
+ 249 005c 00000000 		.word	hcan2
+ 250              		.cfi_endproc
+ 251              	.LFE66:
+ 253              		.section	.text.HAL_CAN_RxFifo1MsgPendingCallback,"ax",%progbits
+ 254              		.align	1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 7
+
+
+ 255              		.global	HAL_CAN_RxFifo1MsgPendingCallback
+ 256              		.syntax unified
+ 257              		.thumb
+ 258              		.thumb_func
+ 260              	HAL_CAN_RxFifo1MsgPendingCallback:
+ 261              	.LVL16:
+ 262              	.LFB68:
+  85:Core/Src/can-user.c **** //CAN1中断回调函数
+  86:Core/Src/can-user.c **** void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
+  87:Core/Src/can-user.c **** 	uint8_t aRxData[8];
+  88:Core/Src/can-user.c **** 	CAN_RxHeaderTypeDef hCAN1_RxHeader;
+  89:Core/Src/can-user.c **** 	static vu8* temp_threshold = (vu8*)&E03.Threshold;
+  90:Core/Src/can-user.c **** 	static vu16 threshold_id = 0x140;
+  91:Core/Src/can-user.c **** 
+  92:Core/Src/can-user.c **** 	if(HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &hCAN1_RxHeader, aRxData) == HAL_OK){
+  93:Core/Src/can-user.c **** 		if(hcan == &hcan1){
+  94:Core/Src/can-user.c **** 			/*阈值恢复默认值指令*/
+  95:Core/Src/can-user.c **** 			if(hCAN1_RxHeader.StdId==0x101){
+  96:Core/Src/can-user.c **** 				E03.State.Init_flag=0;
+  97:Core/Src/can-user.c **** 				Flash_Write_Init_Flag();	//往Flash里面存Init_Flag值
+  98:Core/Src/can-user.c **** 				Threshold_Update();	//更新BMS的阈值
+  99:Core/Src/can-user.c **** 				Can_Send_Package((u8*)&E03.Threshold, CAN_ID_THRESHOLD, CAN_PL_THRESHOLD, ENABLE, DISABLE);	//�
+ 100:Core/Src/can-user.c **** 			}
+ 101:Core/Src/can-user.c **** 			/*BDU更改错误位屏蔽*/
+ 102:Core/Src/can-user.c **** 			if(hCAN1_RxHeader.StdId==0x132){
+ 103:Core/Src/can-user.c **** 				E03.Alarm.error_mute=aRxData[0]+(aRxData[1]<<8)+(aRxData[2]<<16)+(aRxData[3]<<24);	
+ 104:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 105:Core/Src/can-user.c **** 			}
+ 106:Core/Src/can-user.c **** 			/*BDU修改阈值*/
+ 107:Core/Src/can-user.c **** 			if(hCAN1_RxHeader.StdId==threshold_id){
+ 108:Core/Src/can-user.c **** 				for(u8 i=0; i<8; i++) {
+ 109:Core/Src/can-user.c **** 					*temp_threshold=aRxData[i];
+ 110:Core/Src/can-user.c **** 					temp_threshold++;
+ 111:Core/Src/can-user.c **** 				}
+ 112:Core/Src/can-user.c **** 				threshold_id++;
+ 113:Core/Src/can-user.c **** 				if(threshold_id>0X14D){			//修改到threshold数组的最后一个值, 则进行指针的复�
+ 114:Core/Src/can-user.c **** 					threshold_id=0x140;
+ 115:Core/Src/can-user.c **** 					temp_threshold=(vu8*)&E03.Threshold;
+ 116:Core/Src/can-user.c **** 					E03.State.Init_flag=1;
+ 117:Core/Src/can-user.c **** 					Flash_SE(Flash_Sec_Init_Flag);	//向Flash存进最新的flag
+ 118:Core/Src/can-user.c **** 					Flash_Write((u8*)&E03.State.Init_flag, Flash_Addr_Init_Flag, sizeof(E03.State.Init_flag)/sizeo
+ 119:Core/Src/can-user.c **** 					Flash_Write_Threshold();
+ 120:Core/Src/can-user.c **** 				}
+ 121:Core/Src/can-user.c **** 			}
+ 122:Core/Src/can-user.c **** 			if(hCAN1_RxHeader.StdId==0x14E){	/*收到该指令发送阈值数据*/
+ 123:Core/Src/can-user.c **** 				Can_Send_Package((u8*)&E03.Threshold, CAN_ID_THRESHOLD, CAN_PL_THRESHOLD, ENABLE, DISABLE);
+ 124:Core/Src/can-user.c **** 			}
+ 125:Core/Src/can-user.c **** 			/*进入工装模式*/
+ 126:Core/Src/can-user.c **** 			if(hCAN1_RxHeader.StdId==0x150){
+ 127:Core/Src/can-user.c **** 				E03.Tooling.AIRP_Ctrl = aRxData[0];	//更改工装模式配置
+ 128:Core/Src/can-user.c **** 				E03.Tooling.AIRN_Ctrl = aRxData[1];
+ 129:Core/Src/can-user.c **** 				E03.Tooling.PrechargeAIR_Ctrl = aRxData[2];
+ 130:Core/Src/can-user.c **** 				E03.Tooling.Error_Ctrl = aRxData[3];
+ 131:Core/Src/can-user.c **** 				E03.Tooling.Fans_Ctrl = aRxData[4];
+ 132:Core/Src/can-user.c **** 				E03.Tooling.Manual_Enable = aRxData[5];
+ 133:Core/Src/can-user.c **** 				E03.Tooling.Active_onHV = aRxData[6];
+ 134:Core/Src/can-user.c **** 				E03.State.BMS_State=BMS_Manual_MODE;	//进入工装模式
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 8
+
+
+ 135:Core/Src/can-user.c **** 			}
+ 136:Core/Src/can-user.c **** 			/*霍尔can*/
+ 137:Core/Src/can-user.c **** 			if(hCAN1_RxHeader.StdId==0x03c3){
+ 138:Core/Src/can-user.c **** 				if((aRxData[0]<<24)+(aRxData[1]<<16) + (aRxData[2]<<8) + aRxData[3]==0xffff){
+ 139:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 140:Core/Src/can-user.c **** 				}
+ 141:Core/Src/can-user.c **** 				else{
+ 142:Core/Src/can-user.c **** 					E03.State.TotalCurrent=(aRxData[0]<<24) + (aRxData[1]<<16) + (aRxData[2]<<8) + aRxData[3] - 0x
+ 143:Core/Src/can-user.c **** 					Hall_Count = 0;	//接收到霍尔电流信息, 清除计数
+ 144:Core/Src/can-user.c **** 				}
+ 145:Core/Src/can-user.c **** 			}
+ 146:Core/Src/can-user.c **** 		}
+ 147:Core/Src/can-user.c **** 	}
+ 148:Core/Src/can-user.c **** 	else{
+ 149:Core/Src/can-user.c **** 		Error_Handler();
+ 150:Core/Src/can-user.c **** 	}
+ 151:Core/Src/can-user.c **** }
+ 152:Core/Src/can-user.c **** //CAN2中断回调函数
+ 153:Core/Src/can-user.c **** void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan){
+ 263              		.loc 1 153 64 is_stmt 1 view -0
+ 264              		.cfi_startproc
+ 265              		@ args = 0, pretend = 0, frame = 40
+ 266              		@ frame_needed = 0, uses_anonymous_args = 0
+ 267              		.loc 1 153 64 is_stmt 0 view .LVU77
+ 268 0000 10B5     		push	{r4, lr}
+ 269              	.LCFI8:
+ 270              		.cfi_def_cfa_offset 8
+ 271              		.cfi_offset 4, -8
+ 272              		.cfi_offset 14, -4
+ 273 0002 8AB0     		sub	sp, sp, #40
+ 274              	.LCFI9:
+ 275              		.cfi_def_cfa_offset 48
+ 276 0004 0446     		mov	r4, r0
+ 154:Core/Src/can-user.c **** 	uint8_t aRxData[8];
+ 277              		.loc 1 154 2 is_stmt 1 view .LVU78
+ 155:Core/Src/can-user.c **** 	CAN_RxHeaderTypeDef hCAN2_RxHeader;
+ 278              		.loc 1 155 2 view .LVU79
+ 156:Core/Src/can-user.c **** 	if(HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &hCAN2_RxHeader, aRxData) == HAL_OK){
+ 279              		.loc 1 156 2 view .LVU80
+ 280              		.loc 1 156 5 is_stmt 0 view .LVU81
+ 281 0006 08AB     		add	r3, sp, #32
+ 282 0008 01AA     		add	r2, sp, #4
+ 283 000a 0121     		movs	r1, #1
+ 284 000c FFF7FEFF 		bl	HAL_CAN_GetRxMessage
+ 285              	.LVL17:
+ 286              		.loc 1 156 4 view .LVU82
+ 287 0010 A0BB     		cbnz	r0, .L22
+ 157:Core/Src/can-user.c **** 		if(hcan == &hcan2){
+ 288              		.loc 1 157 3 is_stmt 1 view .LVU83
+ 289              		.loc 1 157 5 is_stmt 0 view .LVU84
+ 290 0012 1C4B     		ldr	r3, .L28
+ 291 0014 9C42     		cmp	r4, r3
+ 292 0016 01D0     		beq	.L26
+ 293              	.L21:
+ 158:Core/Src/can-user.c **** 			if(hCAN2_RxHeader.ExtId==0x18FF50E5){		//收到充电机发送目前自己的电压和电流
+ 159:Core/Src/can-user.c **** 				E03.charge.ChargeVol=(aRxData[0]<<8) + aRxData[1];
+ 160:Core/Src/can-user.c **** 				E03.charge.ChargeCur=(aRxData[2]<<8) + aRxData[3];
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 9
+
+
+ 161:Core/Src/can-user.c **** 				E03.charge.ChargeStatus=aRxData[4];	//充电机当前状态
+ 162:Core/Src/can-user.c **** 				E03.State.Charge_flag=1;			//flag等于1代表收到充电机信号, 可以进行预充			
+ 163:Core/Src/can-user.c **** 				if(E03.charge.ChargeStatus==0x08){		//表示充电机没有错误, 详情看铁城充电协议
+ 164:Core/Src/can-user.c **** 														//充电程序的下一步要看statemachine();
+ 165:Core/Src/can-user.c **** 				}
+ 166:Core/Src/can-user.c **** 				else if(E03.charge.ChargeStatus==0x00){
+ 167:Core/Src/can-user.c **** 					//此时正常充电, 空走一下
+ 168:Core/Src/can-user.c **** 				}
+ 169:Core/Src/can-user.c **** 				else{	//表示充电机有错误, 详情看铁城充电协议
+ 170:Core/Src/can-user.c **** 					E03.Alarm.Chargemachine_Error=1;	//充电机故障标志位置1
+ 171:Core/Src/can-user.c **** 					Error();	//BMS进入故障, 关闭输出
+ 172:Core/Src/can-user.c **** 				}
+ 173:Core/Src/can-user.c **** 				ChargeMachine_Count=0;	//计数值清零, 代表已经收到了充电机数据
+ 174:Core/Src/can-user.c **** 			}
+ 175:Core/Src/can-user.c **** 		}
+ 176:Core/Src/can-user.c **** 	}
+ 177:Core/Src/can-user.c **** 	else{
+ 178:Core/Src/can-user.c **** 		Error_Handler();
+ 179:Core/Src/can-user.c **** 	}
+ 180:Core/Src/can-user.c **** }
+ 294              		.loc 1 180 1 view .LVU85
+ 295 0018 0AB0     		add	sp, sp, #40
+ 296              	.LCFI10:
+ 297              		.cfi_remember_state
+ 298              		.cfi_def_cfa_offset 8
+ 299              		@ sp needed
+ 300 001a 10BD     		pop	{r4, pc}
+ 301              	.LVL18:
+ 302              	.L26:
+ 303              	.LCFI11:
+ 304              		.cfi_restore_state
+ 158:Core/Src/can-user.c **** 			if(hCAN2_RxHeader.ExtId==0x18FF50E5){		//收到充电机发送目前自己的电压和电流
+ 305              		.loc 1 158 4 is_stmt 1 view .LVU86
+ 158:Core/Src/can-user.c **** 			if(hCAN2_RxHeader.ExtId==0x18FF50E5){		//收到充电机发送目前自己的电压和电流
+ 306              		.loc 1 158 6 is_stmt 0 view .LVU87
+ 307 001c 029A     		ldr	r2, [sp, #8]
+ 308 001e 1A4B     		ldr	r3, .L28+4
+ 309 0020 9A42     		cmp	r2, r3
+ 310 0022 F9D1     		bne	.L21
+ 159:Core/Src/can-user.c **** 				E03.charge.ChargeCur=(aRxData[2]<<8) + aRxData[3];
+ 311              		.loc 1 159 5 is_stmt 1 view .LVU88
+ 159:Core/Src/can-user.c **** 				E03.charge.ChargeCur=(aRxData[2]<<8) + aRxData[3];
+ 312              		.loc 1 159 34 is_stmt 0 view .LVU89
+ 313 0024 9DF82030 		ldrb	r3, [sp, #32]	@ zero_extendqisi2
+ 159:Core/Src/can-user.c **** 				E03.charge.ChargeCur=(aRxData[2]<<8) + aRxData[3];
+ 314              		.loc 1 159 51 view .LVU90
+ 315 0028 9DF82120 		ldrb	r2, [sp, #33]	@ zero_extendqisi2
+ 159:Core/Src/can-user.c **** 				E03.charge.ChargeCur=(aRxData[2]<<8) + aRxData[3];
+ 316              		.loc 1 159 42 view .LVU91
+ 317 002c 02EB0322 		add	r2, r2, r3, lsl #8
+ 318 0030 92B2     		uxth	r2, r2
+ 159:Core/Src/can-user.c **** 				E03.charge.ChargeCur=(aRxData[2]<<8) + aRxData[3];
+ 319              		.loc 1 159 25 view .LVU92
+ 320 0032 164B     		ldr	r3, .L28+8
+ 321 0034 A3F83821 		strh	r2, [r3, #312]	@ movhi
+ 160:Core/Src/can-user.c **** 				E03.charge.ChargeStatus=aRxData[4];	//充电机当前状态
+ 322              		.loc 1 160 5 is_stmt 1 view .LVU93
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 10
+
+
+ 160:Core/Src/can-user.c **** 				E03.charge.ChargeStatus=aRxData[4];	//充电机当前状态
+ 323              		.loc 1 160 34 is_stmt 0 view .LVU94
+ 324 0038 9DF82210 		ldrb	r1, [sp, #34]	@ zero_extendqisi2
+ 160:Core/Src/can-user.c **** 				E03.charge.ChargeStatus=aRxData[4];	//充电机当前状态
+ 325              		.loc 1 160 51 view .LVU95
+ 326 003c 9DF82320 		ldrb	r2, [sp, #35]	@ zero_extendqisi2
+ 160:Core/Src/can-user.c **** 				E03.charge.ChargeStatus=aRxData[4];	//充电机当前状态
+ 327              		.loc 1 160 42 view .LVU96
+ 328 0040 02EB0122 		add	r2, r2, r1, lsl #8
+ 329 0044 92B2     		uxth	r2, r2
+ 160:Core/Src/can-user.c **** 				E03.charge.ChargeStatus=aRxData[4];	//充电机当前状态
+ 330              		.loc 1 160 25 view .LVU97
+ 331 0046 A3F83A21 		strh	r2, [r3, #314]	@ movhi
+ 161:Core/Src/can-user.c **** 				E03.State.Charge_flag=1;			//flag等于1代表收到充电机信号, 可以进行预充			
+ 332              		.loc 1 161 5 is_stmt 1 view .LVU98
+ 161:Core/Src/can-user.c **** 				E03.State.Charge_flag=1;			//flag等于1代表收到充电机信号, 可以进行预充			
+ 333              		.loc 1 161 36 is_stmt 0 view .LVU99
+ 334 004a 9DF82420 		ldrb	r2, [sp, #36]	@ zero_extendqisi2
+ 161:Core/Src/can-user.c **** 				E03.State.Charge_flag=1;			//flag等于1代表收到充电机信号, 可以进行预充			
+ 335              		.loc 1 161 28 view .LVU100
+ 336 004e 83F83C21 		strb	r2, [r3, #316]
+ 162:Core/Src/can-user.c **** 				if(E03.charge.ChargeStatus==0x08){		//表示充电机没有错误, 详情看铁城充电协议
+ 337              		.loc 1 162 5 is_stmt 1 view .LVU101
+ 162:Core/Src/can-user.c **** 				if(E03.charge.ChargeStatus==0x08){		//表示充电机没有错误, 详情看铁城充电协议
+ 338              		.loc 1 162 26 is_stmt 0 view .LVU102
+ 339 0052 0122     		movs	r2, #1
+ 340 0054 1A74     		strb	r2, [r3, #16]
+ 163:Core/Src/can-user.c **** 														//充电程序的下一步要看statemachine();
+ 341              		.loc 1 163 5 is_stmt 1 view .LVU103
+ 163:Core/Src/can-user.c **** 														//充电程序的下一步要看statemachine();
+ 342              		.loc 1 163 18 is_stmt 0 view .LVU104
+ 343 0056 93F83C31 		ldrb	r3, [r3, #316]	@ zero_extendqisi2
+ 344 005a DBB2     		uxtb	r3, r3
+ 163:Core/Src/can-user.c **** 														//充电程序的下一步要看statemachine();
+ 345              		.loc 1 163 7 view .LVU105
+ 346 005c 082B     		cmp	r3, #8
+ 347 005e 03D0     		beq	.L24
+ 166:Core/Src/can-user.c **** 					//此时正常充电, 空走一下
+ 348              		.loc 1 166 10 is_stmt 1 view .LVU106
+ 166:Core/Src/can-user.c **** 					//此时正常充电, 空走一下
+ 349              		.loc 1 166 23 is_stmt 0 view .LVU107
+ 350 0060 0A4B     		ldr	r3, .L28+8
+ 351 0062 93F83C31 		ldrb	r3, [r3, #316]	@ zero_extendqisi2
+ 166:Core/Src/can-user.c **** 					//此时正常充电, 空走一下
+ 352              		.loc 1 166 12 view .LVU108
+ 353 0066 1BB9     		cbnz	r3, .L27
+ 354              	.L24:
+ 173:Core/Src/can-user.c **** 			}
+ 355              		.loc 1 173 5 is_stmt 1 view .LVU109
+ 173:Core/Src/can-user.c **** 			}
+ 356              		.loc 1 173 24 is_stmt 0 view .LVU110
+ 357 0068 094B     		ldr	r3, .L28+12
+ 358 006a 0022     		movs	r2, #0
+ 359 006c 1A70     		strb	r2, [r3]
+ 360 006e D3E7     		b	.L21
+ 361              	.L27:
+ 170:Core/Src/can-user.c **** 					Error();	//BMS进入故障, 关闭输出
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 11
+
+
+ 362              		.loc 1 170 6 is_stmt 1 view .LVU111
+ 170:Core/Src/can-user.c **** 					Error();	//BMS进入故障, 关闭输出
+ 363              		.loc 1 170 35 is_stmt 0 view .LVU112
+ 364 0070 064B     		ldr	r3, .L28+8
+ 365 0072 83F84E21 		strb	r2, [r3, #334]
+ 171:Core/Src/can-user.c **** 				}
+ 366              		.loc 1 171 6 is_stmt 1 view .LVU113
+ 367 0076 FFF7FEFF 		bl	Error
+ 368              	.LVL19:
+ 369 007a F5E7     		b	.L24
+ 370              	.L22:
+ 178:Core/Src/can-user.c **** 	}
+ 371              		.loc 1 178 3 view .LVU114
+ 372 007c FFF7FEFF 		bl	Error_Handler
+ 373              	.LVL20:
+ 374              		.loc 1 180 1 is_stmt 0 view .LVU115
+ 375 0080 CAE7     		b	.L21
+ 376              	.L29:
+ 377 0082 00BF     		.align	2
+ 378              	.L28:
+ 379 0084 00000000 		.word	hcan2
+ 380 0088 E550FF18 		.word	419385573
+ 381 008c 00000000 		.word	E03
+ 382 0090 00000000 		.word	ChargeMachine_Count
+ 383              		.cfi_endproc
+ 384              	.LFE68:
+ 386              		.section	.text.Can_Send_Msg,"ax",%progbits
+ 387              		.align	1
+ 388              		.global	Can_Send_Msg
+ 389              		.syntax unified
+ 390              		.thumb
+ 391              		.thumb_func
+ 393              	Can_Send_Msg:
+ 394              	.LVL21:
+ 395              	.LFB69:
+ 181:Core/Src/can-user.c **** 
+ 182:Core/Src/can-user.c **** /**
+ 183:Core/Src/can-user.c ****  * CAN数据传输, 只发送一组
+ 184:Core/Src/can-user.c ****  * @param	data   待发送的数据
+ 185:Core/Src/can-user.c ****  * 			ID canID号, 详情请看BMSCAN协议
+ 186:Core/Src/can-user.c ****  * 			can1_state 是否用CAN1发送, ENABLE/DISABLE
+ 187:Core/Src/can-user.c ****  * 			can2_state 是否用CAN2发送, ENABLE/DISABLE
+ 188:Core/Src/can-user.c ****  */
+ 189:Core/Src/can-user.c **** void Can_Send_Msg(u8* data,u16 ID,u8 can1_state,u8 can2_state){
+ 396              		.loc 1 189 63 is_stmt 1 view -0
+ 397              		.cfi_startproc
+ 398              		@ args = 0, pretend = 0, frame = 32
+ 399              		@ frame_needed = 0, uses_anonymous_args = 0
+ 400              		.loc 1 189 63 is_stmt 0 view .LVU117
+ 401 0000 70B5     		push	{r4, r5, r6, lr}
+ 402              	.LCFI12:
+ 403              		.cfi_def_cfa_offset 16
+ 404              		.cfi_offset 4, -16
+ 405              		.cfi_offset 5, -12
+ 406              		.cfi_offset 6, -8
+ 407              		.cfi_offset 14, -4
+ 408 0002 88B0     		sub	sp, sp, #32
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 12
+
+
+ 409              	.LCFI13:
+ 410              		.cfi_def_cfa_offset 48
+ 411 0004 0546     		mov	r5, r0
+ 412 0006 1E46     		mov	r6, r3
+ 190:Core/Src/can-user.c **** 	uint32_t txmailbox1 = CAN_TX_MAILBOX0;
+ 413              		.loc 1 190 2 is_stmt 1 view .LVU118
+ 414              		.loc 1 190 11 is_stmt 0 view .LVU119
+ 415 0008 0123     		movs	r3, #1
+ 416              	.LVL22:
+ 417              		.loc 1 190 11 view .LVU120
+ 418 000a 0793     		str	r3, [sp, #28]
+ 191:Core/Src/can-user.c **** 	uint32_t txmailbox2 = CAN_TX_MAILBOX1;
+ 419              		.loc 1 191 2 is_stmt 1 view .LVU121
+ 420              		.loc 1 191 11 is_stmt 0 view .LVU122
+ 421 000c 0223     		movs	r3, #2
+ 422 000e 0693     		str	r3, [sp, #24]
+ 192:Core/Src/can-user.c **** 	u16 time_out=0;
+ 423              		.loc 1 192 2 is_stmt 1 view .LVU123
+ 424              	.LVL23:
+ 193:Core/Src/can-user.c **** 	
+ 194:Core/Src/can-user.c **** 	CAN_TxHeaderTypeDef TxMessage;
+ 425              		.loc 1 194 2 view .LVU124
+ 195:Core/Src/can-user.c **** 	TxMessage.StdId=ID;
+ 426              		.loc 1 195 2 view .LVU125
+ 427              		.loc 1 195 17 is_stmt 0 view .LVU126
+ 428 0010 0091     		str	r1, [sp]
+ 196:Core/Src/can-user.c **** 	TxMessage.ExtId=ID;
+ 429              		.loc 1 196 2 is_stmt 1 view .LVU127
+ 430              		.loc 1 196 17 is_stmt 0 view .LVU128
+ 431 0012 0191     		str	r1, [sp, #4]
+ 197:Core/Src/can-user.c **** 	TxMessage.RTR=CAN_RTR_DATA;
+ 432              		.loc 1 197 2 is_stmt 1 view .LVU129
+ 433              		.loc 1 197 15 is_stmt 0 view .LVU130
+ 434 0014 0023     		movs	r3, #0
+ 435 0016 0393     		str	r3, [sp, #12]
+ 198:Core/Src/can-user.c **** 	TxMessage.DLC=8;
+ 436              		.loc 1 198 2 is_stmt 1 view .LVU131
+ 437              		.loc 1 198 15 is_stmt 0 view .LVU132
+ 438 0018 0821     		movs	r1, #8
+ 439              	.LVL24:
+ 440              		.loc 1 198 15 view .LVU133
+ 441 001a 0491     		str	r1, [sp, #16]
+ 199:Core/Src/can-user.c **** 
+ 200:Core/Src/can-user.c **** 	TxMessage.IDE=CAN_ID_STD;	//BDU使用标准帧
+ 442              		.loc 1 200 2 is_stmt 1 view .LVU134
+ 443              		.loc 1 200 15 is_stmt 0 view .LVU135
+ 444 001c 0293     		str	r3, [sp, #8]
+ 201:Core/Src/can-user.c **** 	if(can1_state==ENABLE){
+ 445              		.loc 1 201 2 is_stmt 1 view .LVU136
+ 446              		.loc 1 201 4 is_stmt 0 view .LVU137
+ 447 001e 012A     		cmp	r2, #1
+ 448 0020 13D0     		beq	.L40
+ 449              	.LVL25:
+ 450              	.L32:
+ 202:Core/Src/can-user.c **** 		while((HAL_CAN_AddTxMessage(&hcan1, &TxMessage, data, &txmailbox1)!=HAL_OK) && (time_out<1000)){	
+ 203:Core/Src/can-user.c **** 			time_out++;
+ 204:Core/Src/can-user.c **** 		}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 13
+
+
+ 205:Core/Src/can-user.c **** 	}
+ 206:Core/Src/can-user.c **** //	if(time_out==1000)
+ 207:Core/Src/can-user.c **** //		Error_Handler();
+ 208:Core/Src/can-user.c **** 	TxMessage.IDE=CAN_ID_EXT;	//使用拓展帧发送, 因为CANA的主控只能收拓展帧
+ 451              		.loc 1 208 2 is_stmt 1 view .LVU138
+ 452              		.loc 1 208 15 is_stmt 0 view .LVU139
+ 453 0022 0423     		movs	r3, #4
+ 454 0024 0293     		str	r3, [sp, #8]
+ 209:Core/Src/can-user.c **** 	time_out=0;
+ 455              		.loc 1 209 2 is_stmt 1 view .LVU140
+ 456              	.LVL26:
+ 210:Core/Src/can-user.c **** 	if(can2_state==ENABLE){
+ 457              		.loc 1 210 2 view .LVU141
+ 458              		.loc 1 210 4 is_stmt 0 view .LVU142
+ 459 0026 012E     		cmp	r6, #1
+ 460 0028 1FD0     		beq	.L41
+ 461              	.LVL27:
+ 462              	.L30:
+ 211:Core/Src/can-user.c **** 		while((HAL_CAN_AddTxMessage(&hcan2, &TxMessage, data, &txmailbox2)!=HAL_OK) && (time_out<1000)){
+ 212:Core/Src/can-user.c **** 			time_out++;
+ 213:Core/Src/can-user.c **** 		}
+ 214:Core/Src/can-user.c **** 	}
+ 215:Core/Src/can-user.c **** //	if(time_out==1000)
+ 216:Core/Src/can-user.c **** //		Error_Handler();
+ 217:Core/Src/can-user.c **** }
+ 463              		.loc 1 217 1 view .LVU143
+ 464 002a 08B0     		add	sp, sp, #32
+ 465              	.LCFI14:
+ 466              		.cfi_remember_state
+ 467              		.cfi_def_cfa_offset 16
+ 468              		@ sp needed
+ 469 002c 70BD     		pop	{r4, r5, r6, pc}
+ 470              	.LVL28:
+ 471              	.L33:
+ 472              	.LCFI15:
+ 473              		.cfi_restore_state
+ 203:Core/Src/can-user.c **** 		}
+ 474              		.loc 1 203 4 is_stmt 1 view .LVU144
+ 203:Core/Src/can-user.c **** 		}
+ 475              		.loc 1 203 12 is_stmt 0 view .LVU145
+ 476 002e 0134     		adds	r4, r4, #1
+ 477              	.LVL29:
+ 203:Core/Src/can-user.c **** 		}
+ 478              		.loc 1 203 12 view .LVU146
+ 479 0030 A4B2     		uxth	r4, r4
+ 480              	.LVL30:
+ 481              	.L31:
+ 202:Core/Src/can-user.c **** 			time_out++;
+ 482              		.loc 1 202 79 is_stmt 1 view .LVU147
+ 202:Core/Src/can-user.c **** 			time_out++;
+ 483              		.loc 1 202 10 is_stmt 0 view .LVU148
+ 484 0032 07AB     		add	r3, sp, #28
+ 485 0034 2A46     		mov	r2, r5
+ 486 0036 6946     		mov	r1, sp
+ 487 0038 0D48     		ldr	r0, .L42
+ 488 003a FFF7FEFF 		bl	HAL_CAN_AddTxMessage
+ 489              	.LVL31:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 14
+
+
+ 202:Core/Src/can-user.c **** 			time_out++;
+ 490              		.loc 1 202 79 view .LVU149
+ 491 003e 0028     		cmp	r0, #0
+ 492 0040 EFD0     		beq	.L32
+ 202:Core/Src/can-user.c **** 			time_out++;
+ 493              		.loc 1 202 79 discriminator 1 view .LVU150
+ 494 0042 B4F57A7F 		cmp	r4, #1000
+ 495 0046 F2D3     		bcc	.L33
+ 496 0048 EBE7     		b	.L32
+ 497              	.LVL32:
+ 498              	.L40:
+ 192:Core/Src/can-user.c **** 	
+ 499              		.loc 1 192 6 view .LVU151
+ 500 004a 0024     		movs	r4, #0
+ 501 004c F1E7     		b	.L31
+ 502              	.LVL33:
+ 503              	.L36:
+ 212:Core/Src/can-user.c **** 		}
+ 504              		.loc 1 212 4 is_stmt 1 view .LVU152
+ 212:Core/Src/can-user.c **** 		}
+ 505              		.loc 1 212 12 is_stmt 0 view .LVU153
+ 506 004e 0134     		adds	r4, r4, #1
+ 507              	.LVL34:
+ 212:Core/Src/can-user.c **** 		}
+ 508              		.loc 1 212 12 view .LVU154
+ 509 0050 A4B2     		uxth	r4, r4
+ 510              	.LVL35:
+ 511              	.L34:
+ 211:Core/Src/can-user.c **** 			time_out++;
+ 512              		.loc 1 211 79 is_stmt 1 view .LVU155
+ 211:Core/Src/can-user.c **** 			time_out++;
+ 513              		.loc 1 211 10 is_stmt 0 view .LVU156
+ 514 0052 06AB     		add	r3, sp, #24
+ 515 0054 2A46     		mov	r2, r5
+ 516 0056 6946     		mov	r1, sp
+ 517 0058 0648     		ldr	r0, .L42+4
+ 518 005a FFF7FEFF 		bl	HAL_CAN_AddTxMessage
+ 519              	.LVL36:
+ 211:Core/Src/can-user.c **** 			time_out++;
+ 520              		.loc 1 211 79 view .LVU157
+ 521 005e 0028     		cmp	r0, #0
+ 522 0060 E3D0     		beq	.L30
+ 211:Core/Src/can-user.c **** 			time_out++;
+ 523              		.loc 1 211 79 discriminator 1 view .LVU158
+ 524 0062 B4F57A7F 		cmp	r4, #1000
+ 525 0066 F2D3     		bcc	.L36
+ 526 0068 DFE7     		b	.L30
+ 527              	.LVL37:
+ 528              	.L41:
+ 209:Core/Src/can-user.c **** 	if(can2_state==ENABLE){
+ 529              		.loc 1 209 10 view .LVU159
+ 530 006a 0024     		movs	r4, #0
+ 531 006c F1E7     		b	.L34
+ 532              	.L43:
+ 533 006e 00BF     		.align	2
+ 534              	.L42:
+ 535 0070 00000000 		.word	hcan1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 15
+
+
+ 536 0074 00000000 		.word	hcan2
+ 537              		.cfi_endproc
+ 538              	.LFE69:
+ 540              		.section	.text.Can_Send_Package,"ax",%progbits
+ 541              		.align	1
+ 542              		.global	Can_Send_Package
+ 543              		.syntax unified
+ 544              		.thumb
+ 545              		.thumb_func
+ 547              	Can_Send_Package:
+ 548              	.LVL38:
+ 549              	.LFB70:
+ 218:Core/Src/can-user.c **** 
+ 219:Core/Src/can-user.c **** /**
+ 220:Core/Src/can-user.c ****  * CAN数据传输, 发送一个包
+ 221:Core/Src/can-user.c ****  * @param	data   待发送的数据
+ 222:Core/Src/can-user.c ****  * 			ID canID号, 详情请看BMSCAN协议
+ 223:Core/Src/can-user.c ****  * 			num 要发送多少组
+ 224:Core/Src/can-user.c ****  * 			can1_state 是否用CAN1发送, ENABLE/DISABLE
+ 225:Core/Src/can-user.c ****  * 			can2_state 是否用CAN2发送, ENABLE/DISABLE
+ 226:Core/Src/can-user.c ****  */
+ 227:Core/Src/can-user.c **** void Can_Send_Package(u8* data,u16 ID,u8 num, u8 can1_state,u8 can2_state){
+ 550              		.loc 1 227 75 is_stmt 1 view -0
+ 551              		.cfi_startproc
+ 552              		@ args = 4, pretend = 0, frame = 0
+ 553              		@ frame_needed = 0, uses_anonymous_args = 0
+ 554              		.loc 1 227 75 is_stmt 0 view .LVU161
+ 555 0000 2DE9F843 		push	{r3, r4, r5, r6, r7, r8, r9, lr}
+ 556              	.LCFI16:
+ 557              		.cfi_def_cfa_offset 32
+ 558              		.cfi_offset 3, -32
+ 559              		.cfi_offset 4, -28
+ 560              		.cfi_offset 5, -24
+ 561              		.cfi_offset 6, -20
+ 562              		.cfi_offset 7, -16
+ 563              		.cfi_offset 8, -12
+ 564              		.cfi_offset 9, -8
+ 565              		.cfi_offset 14, -4
+ 566 0004 0646     		mov	r6, r0
+ 567 0006 0C46     		mov	r4, r1
+ 568 0008 1746     		mov	r7, r2
+ 569 000a 9846     		mov	r8, r3
+ 570 000c 9DF82090 		ldrb	r9, [sp, #32]	@ zero_extendqisi2
+ 228:Core/Src/can-user.c **** 	for(u8 count=0; count<num; count++){
+ 571              		.loc 1 228 2 is_stmt 1 view .LVU162
+ 572              	.LBB2:
+ 573              		.loc 1 228 6 view .LVU163
+ 574              	.LVL39:
+ 575              		.loc 1 228 9 is_stmt 0 view .LVU164
+ 576 0010 0025     		movs	r5, #0
+ 577              		.loc 1 228 2 view .LVU165
+ 578 0012 0AE0     		b	.L45
+ 579              	.LVL40:
+ 580              	.L46:
+ 229:Core/Src/can-user.c **** 		Can_Send_Msg(data, ID, can1_state, can2_state);
+ 581              		.loc 1 229 3 is_stmt 1 discriminator 3 view .LVU166
+ 582 0014 4B46     		mov	r3, r9
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 16
+
+
+ 583 0016 4246     		mov	r2, r8
+ 584 0018 2146     		mov	r1, r4
+ 585 001a 3046     		mov	r0, r6
+ 586 001c FFF7FEFF 		bl	Can_Send_Msg
+ 587              	.LVL41:
+ 230:Core/Src/can-user.c **** 		data+=8;
+ 588              		.loc 1 230 3 discriminator 3 view .LVU167
+ 589              		.loc 1 230 7 is_stmt 0 discriminator 3 view .LVU168
+ 590 0020 0836     		adds	r6, r6, #8
+ 591              	.LVL42:
+ 231:Core/Src/can-user.c **** 		ID++;
+ 592              		.loc 1 231 3 is_stmt 1 discriminator 3 view .LVU169
+ 593              		.loc 1 231 5 is_stmt 0 discriminator 3 view .LVU170
+ 594 0022 0134     		adds	r4, r4, #1
+ 595              	.LVL43:
+ 596              		.loc 1 231 5 discriminator 3 view .LVU171
+ 597 0024 A4B2     		uxth	r4, r4
+ 598              	.LVL44:
+ 228:Core/Src/can-user.c **** 		Can_Send_Msg(data, ID, can1_state, can2_state);
+ 599              		.loc 1 228 34 is_stmt 1 discriminator 3 view .LVU172
+ 600 0026 0135     		adds	r5, r5, #1
+ 601              	.LVL45:
+ 228:Core/Src/can-user.c **** 		Can_Send_Msg(data, ID, can1_state, can2_state);
+ 602              		.loc 1 228 34 is_stmt 0 discriminator 3 view .LVU173
+ 603 0028 EDB2     		uxtb	r5, r5
+ 604              	.LVL46:
+ 605              	.L45:
+ 228:Core/Src/can-user.c **** 		Can_Send_Msg(data, ID, can1_state, can2_state);
+ 606              		.loc 1 228 23 is_stmt 1 discriminator 1 view .LVU174
+ 607 002a BD42     		cmp	r5, r7
+ 608 002c F2D3     		bcc	.L46
+ 228:Core/Src/can-user.c **** 		Can_Send_Msg(data, ID, can1_state, can2_state);
+ 609              		.loc 1 228 23 is_stmt 0 discriminator 1 view .LVU175
+ 610              	.LBE2:
+ 232:Core/Src/can-user.c **** 	}
+ 233:Core/Src/can-user.c **** }
+ 611              		.loc 1 233 1 view .LVU176
+ 612 002e BDE8F883 		pop	{r3, r4, r5, r6, r7, r8, r9, pc}
+ 613              		.loc 1 233 1 view .LVU177
+ 614              		.cfi_endproc
+ 615              	.LFE70:
+ 617              		.section	.text.HAL_CAN_RxFifo0MsgPendingCallback,"ax",%progbits
+ 618              		.align	1
+ 619              		.global	HAL_CAN_RxFifo0MsgPendingCallback
+ 620              		.syntax unified
+ 621              		.thumb
+ 622              		.thumb_func
+ 624              	HAL_CAN_RxFifo0MsgPendingCallback:
+ 625              	.LVL47:
+ 626              	.LFB67:
+  86:Core/Src/can-user.c **** 	uint8_t aRxData[8];
+ 627              		.loc 1 86 64 is_stmt 1 view -0
+ 628              		.cfi_startproc
+ 629              		@ args = 0, pretend = 0, frame = 40
+ 630              		@ frame_needed = 0, uses_anonymous_args = 0
+  86:Core/Src/can-user.c **** 	uint8_t aRxData[8];
+ 631              		.loc 1 86 64 is_stmt 0 view .LVU179
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 17
+
+
+ 632 0000 70B5     		push	{r4, r5, r6, lr}
+ 633              	.LCFI17:
+ 634              		.cfi_def_cfa_offset 16
+ 635              		.cfi_offset 4, -16
+ 636              		.cfi_offset 5, -12
+ 637              		.cfi_offset 6, -8
+ 638              		.cfi_offset 14, -4
+ 639 0002 8CB0     		sub	sp, sp, #48
+ 640              	.LCFI18:
+ 641              		.cfi_def_cfa_offset 64
+ 642 0004 0546     		mov	r5, r0
+  87:Core/Src/can-user.c **** 	CAN_RxHeaderTypeDef hCAN1_RxHeader;
+ 643              		.loc 1 87 2 is_stmt 1 view .LVU180
+  88:Core/Src/can-user.c **** 	static vu8* temp_threshold = (vu8*)&E03.Threshold;
+ 644              		.loc 1 88 2 view .LVU181
+  89:Core/Src/can-user.c **** 	static vu16 threshold_id = 0x140;
+ 645              		.loc 1 89 2 view .LVU182
+  90:Core/Src/can-user.c **** 
+ 646              		.loc 1 90 2 view .LVU183
+  92:Core/Src/can-user.c **** 		if(hcan == &hcan1){
+ 647              		.loc 1 92 2 view .LVU184
+  92:Core/Src/can-user.c **** 		if(hcan == &hcan1){
+ 648              		.loc 1 92 5 is_stmt 0 view .LVU185
+ 649 0006 0AAB     		add	r3, sp, #40
+ 650 0008 03AA     		add	r2, sp, #12
+ 651 000a 0021     		movs	r1, #0
+ 652 000c FFF7FEFF 		bl	HAL_CAN_GetRxMessage
+ 653              	.LVL48:
+  92:Core/Src/can-user.c **** 		if(hcan == &hcan1){
+ 654              		.loc 1 92 4 view .LVU186
+ 655 0010 0028     		cmp	r0, #0
+ 656 0012 40F0C180 		bne	.L49
+ 657 0016 0446     		mov	r4, r0
+  93:Core/Src/can-user.c **** 			/*阈值恢复默认值指令*/
+ 658              		.loc 1 93 3 is_stmt 1 view .LVU187
+  93:Core/Src/can-user.c **** 			/*阈值恢复默认值指令*/
+ 659              		.loc 1 93 5 is_stmt 0 view .LVU188
+ 660 0018 614B     		ldr	r3, .L66
+ 661 001a 9D42     		cmp	r5, r3
+ 662 001c 01D0     		beq	.L60
+ 663              	.LVL49:
+ 664              	.L48:
+ 151:Core/Src/can-user.c **** //CAN2中断回调函数
+ 665              		.loc 1 151 1 view .LVU189
+ 666 001e 0CB0     		add	sp, sp, #48
+ 667              	.LCFI19:
+ 668              		.cfi_remember_state
+ 669              		.cfi_def_cfa_offset 16
+ 670              		@ sp needed
+ 671 0020 70BD     		pop	{r4, r5, r6, pc}
+ 672              	.LVL50:
+ 673              	.L60:
+ 674              	.LCFI20:
+ 675              		.cfi_restore_state
+  95:Core/Src/can-user.c **** 				E03.State.Init_flag=0;
+ 676              		.loc 1 95 4 is_stmt 1 view .LVU190
+  95:Core/Src/can-user.c **** 				E03.State.Init_flag=0;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 18
+
+
+ 677              		.loc 1 95 6 is_stmt 0 view .LVU191
+ 678 0022 039A     		ldr	r2, [sp, #12]
+ 679 0024 40F20113 		movw	r3, #257
+ 680 0028 9A42     		cmp	r2, r3
+ 681 002a 30D0     		beq	.L61
+ 682              	.LVL51:
+ 683              	.L51:
+ 102:Core/Src/can-user.c **** 				E03.Alarm.error_mute=aRxData[0]+(aRxData[1]<<8)+(aRxData[2]<<16)+(aRxData[3]<<24);	
+ 684              		.loc 1 102 4 is_stmt 1 view .LVU192
+ 102:Core/Src/can-user.c **** 				E03.Alarm.error_mute=aRxData[0]+(aRxData[1]<<8)+(aRxData[2]<<16)+(aRxData[3]<<24);	
+ 685              		.loc 1 102 21 is_stmt 0 view .LVU193
+ 686 002c 039B     		ldr	r3, [sp, #12]
+ 102:Core/Src/can-user.c **** 				E03.Alarm.error_mute=aRxData[0]+(aRxData[1]<<8)+(aRxData[2]<<16)+(aRxData[3]<<24);	
+ 687              		.loc 1 102 6 view .LVU194
+ 688 002e B3F5997F 		cmp	r3, #306
+ 689 0032 3DD0     		beq	.L62
+ 690              	.L52:
+ 107:Core/Src/can-user.c **** 				for(u8 i=0; i<8; i++) {
+ 691              		.loc 1 107 4 is_stmt 1 view .LVU195
+ 107:Core/Src/can-user.c **** 				for(u8 i=0; i<8; i++) {
+ 692              		.loc 1 107 27 is_stmt 0 view .LVU196
+ 693 0034 5B4B     		ldr	r3, .L66+4
+ 694 0036 1B88     		ldrh	r3, [r3]
+ 695 0038 9BB2     		uxth	r3, r3
+ 107:Core/Src/can-user.c **** 				for(u8 i=0; i<8; i++) {
+ 696              		.loc 1 107 6 view .LVU197
+ 697 003a 039A     		ldr	r2, [sp, #12]
+ 698 003c 9A42     		cmp	r2, r3
+ 699 003e 57D0     		beq	.L53
+ 700              	.L54:
+ 122:Core/Src/can-user.c **** 				Can_Send_Package((u8*)&E03.Threshold, CAN_ID_THRESHOLD, CAN_PL_THRESHOLD, ENABLE, DISABLE);
+ 701              		.loc 1 122 4 is_stmt 1 view .LVU198
+ 122:Core/Src/can-user.c **** 				Can_Send_Package((u8*)&E03.Threshold, CAN_ID_THRESHOLD, CAN_PL_THRESHOLD, ENABLE, DISABLE);
+ 702              		.loc 1 122 21 is_stmt 0 view .LVU199
+ 703 0040 039B     		ldr	r3, [sp, #12]
+ 122:Core/Src/can-user.c **** 				Can_Send_Package((u8*)&E03.Threshold, CAN_ID_THRESHOLD, CAN_PL_THRESHOLD, ENABLE, DISABLE);
+ 704              		.loc 1 122 6 view .LVU200
+ 705 0042 B3F5A77F 		cmp	r3, #334
+ 706 0046 78D0     		beq	.L63
+ 707              	.L56:
+ 126:Core/Src/can-user.c **** 				E03.Tooling.AIRP_Ctrl = aRxData[0];	//更改工装模式配置
+ 708              		.loc 1 126 4 is_stmt 1 view .LVU201
+ 126:Core/Src/can-user.c **** 				E03.Tooling.AIRP_Ctrl = aRxData[0];	//更改工装模式配置
+ 709              		.loc 1 126 21 is_stmt 0 view .LVU202
+ 710 0048 039A     		ldr	r2, [sp, #12]
+ 126:Core/Src/can-user.c **** 				E03.Tooling.AIRP_Ctrl = aRxData[0];	//更改工装模式配置
+ 711              		.loc 1 126 6 view .LVU203
+ 712 004a B2F5A87F 		cmp	r2, #336
+ 713 004e 7ED0     		beq	.L64
+ 714              	.L57:
+ 137:Core/Src/can-user.c **** 				if((aRxData[0]<<24)+(aRxData[1]<<16) + (aRxData[2]<<8) + aRxData[3]==0xffff){
+ 715              		.loc 1 137 4 is_stmt 1 view .LVU204
+ 137:Core/Src/can-user.c **** 				if((aRxData[0]<<24)+(aRxData[1]<<16) + (aRxData[2]<<8) + aRxData[3]==0xffff){
+ 716              		.loc 1 137 6 is_stmt 0 view .LVU205
+ 717 0050 40F2C333 		movw	r3, #963
+ 718 0054 9A42     		cmp	r2, r3
+ 719 0056 E2D1     		bne	.L48
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 19
+
+
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 720              		.loc 1 138 5 is_stmt 1 view .LVU206
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 721              		.loc 1 138 16 is_stmt 0 view .LVU207
+ 722 0058 9DF82820 		ldrb	r2, [sp, #40]	@ zero_extendqisi2
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 723              		.loc 1 138 33 view .LVU208
+ 724 005c 9DF82930 		ldrb	r3, [sp, #41]	@ zero_extendqisi2
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 725              		.loc 1 138 36 view .LVU209
+ 726 0060 1B04     		lsls	r3, r3, #16
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 727              		.loc 1 138 24 view .LVU210
+ 728 0062 03EB0263 		add	r3, r3, r2, lsl #24
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 729              		.loc 1 138 52 view .LVU211
+ 730 0066 9DF82A20 		ldrb	r2, [sp, #42]	@ zero_extendqisi2
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 731              		.loc 1 138 42 view .LVU212
+ 732 006a 03EB0223 		add	r3, r3, r2, lsl #8
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 733              		.loc 1 138 69 view .LVU213
+ 734 006e 9DF82B20 		ldrb	r2, [sp, #43]	@ zero_extendqisi2
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 735              		.loc 1 138 60 view .LVU214
+ 736 0072 1344     		add	r3, r3, r2
+ 138:Core/Src/can-user.c **** 					E03.Alarm.Hall_Error = 1;
+ 737              		.loc 1 138 7 view .LVU215
+ 738 0074 4FF6FF72 		movw	r2, #65535
+ 739 0078 9342     		cmp	r3, r2
+ 740 007a 00F08880 		beq	.L65
+ 142:Core/Src/can-user.c **** 					Hall_Count = 0;	//接收到霍尔电流信息, 清除计数
+ 741              		.loc 1 142 6 is_stmt 1 view .LVU216
+ 142:Core/Src/can-user.c **** 					Hall_Count = 0;	//接收到霍尔电流信息, 清除计数
+ 742              		.loc 1 142 96 is_stmt 0 view .LVU217
+ 743 007e 03F10043 		add	r3, r3, #-2147483648
+ 142:Core/Src/can-user.c **** 					Hall_Count = 0;	//接收到霍尔电流信息, 清除计数
+ 744              		.loc 1 142 28 view .LVU218
+ 745 0082 494A     		ldr	r2, .L66+8
+ 746 0084 1360     		str	r3, [r2]
+ 143:Core/Src/can-user.c **** 				}
+ 747              		.loc 1 143 6 is_stmt 1 view .LVU219
+ 143:Core/Src/can-user.c **** 				}
+ 748              		.loc 1 143 17 is_stmt 0 view .LVU220
+ 749 0086 494B     		ldr	r3, .L66+12
+ 750 0088 0022     		movs	r2, #0
+ 751 008a 1A70     		strb	r2, [r3]
+ 752 008c C7E7     		b	.L48
+ 753              	.LVL52:
+ 754              	.L61:
+  96:Core/Src/can-user.c **** 				Flash_Write_Init_Flag();	//往Flash里面存Init_Flag值
+ 755              		.loc 1 96 5 is_stmt 1 view .LVU221
+  96:Core/Src/can-user.c **** 				Flash_Write_Init_Flag();	//往Flash里面存Init_Flag值
+ 756              		.loc 1 96 24 is_stmt 0 view .LVU222
+ 757 008e 464D     		ldr	r5, .L66+8
+ 758              	.LVL53:
+  96:Core/Src/can-user.c **** 				Flash_Write_Init_Flag();	//往Flash里面存Init_Flag值
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 20
+
+
+ 759              		.loc 1 96 24 view .LVU223
+ 760 0090 0026     		movs	r6, #0
+ 761 0092 EE73     		strb	r6, [r5, #15]
+  97:Core/Src/can-user.c **** 				Threshold_Update();	//更新BMS的阈值
+ 762              		.loc 1 97 5 is_stmt 1 view .LVU224
+ 763 0094 FFF7FEFF 		bl	Flash_Write_Init_Flag
+ 764              	.LVL54:
+  98:Core/Src/can-user.c **** 				Can_Send_Package((u8*)&E03.Threshold, CAN_ID_THRESHOLD, CAN_PL_THRESHOLD, ENABLE, DISABLE);	//�
+ 765              		.loc 1 98 5 view .LVU225
+ 766 0098 FFF7FEFF 		bl	Threshold_Update
+ 767              	.LVL55:
+  99:Core/Src/can-user.c **** 			}
+ 768              		.loc 1 99 5 view .LVU226
+ 769 009c 0096     		str	r6, [sp]
+ 770 009e 0123     		movs	r3, #1
+ 771 00a0 0E22     		movs	r2, #14
+ 772 00a2 4FF4A071 		mov	r1, #320
+ 773 00a6 05F5B470 		add	r0, r5, #360
+ 774 00aa FFF7FEFF 		bl	Can_Send_Package
+ 775              	.LVL56:
+ 776 00ae BDE7     		b	.L51
+ 777              	.L62:
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 778              		.loc 1 103 5 view .LVU227
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 779              		.loc 1 103 33 is_stmt 0 view .LVU228
+ 780 00b0 9DF82830 		ldrb	r3, [sp, #40]	@ zero_extendqisi2
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 781              		.loc 1 103 45 view .LVU229
+ 782 00b4 9DF82920 		ldrb	r2, [sp, #41]	@ zero_extendqisi2
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 783              		.loc 1 103 36 view .LVU230
+ 784 00b8 03EB0223 		add	r3, r3, r2, lsl #8
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 785              		.loc 1 103 61 view .LVU231
+ 786 00bc 9DF82A20 		ldrb	r2, [sp, #42]	@ zero_extendqisi2
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 787              		.loc 1 103 52 view .LVU232
+ 788 00c0 03EB0243 		add	r3, r3, r2, lsl #16
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 789              		.loc 1 103 78 view .LVU233
+ 790 00c4 9DF82B20 		ldrb	r2, [sp, #43]	@ zero_extendqisi2
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 791              		.loc 1 103 69 view .LVU234
+ 792 00c8 03EB0263 		add	r3, r3, r2, lsl #24
+ 103:Core/Src/can-user.c **** 				Flash_Write_Errormute();	//更改开机时的默认屏蔽位
+ 793              		.loc 1 103 25 view .LVU235
+ 794 00cc 364A     		ldr	r2, .L66+8
+ 795 00ce C2F84031 		str	r3, [r2, #320]
+ 104:Core/Src/can-user.c **** 			}
+ 796              		.loc 1 104 5 is_stmt 1 view .LVU236
+ 797 00d2 FFF7FEFF 		bl	Flash_Write_Errormute
+ 798              	.LVL57:
+ 799 00d6 ADE7     		b	.L52
+ 800              	.LVL58:
+ 801              	.L55:
+ 802              	.LBB3:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 21
+
+
+ 109:Core/Src/can-user.c **** 					temp_threshold++;
+ 803              		.loc 1 109 6 discriminator 3 view .LVU237
+ 804 00d8 354A     		ldr	r2, .L66+16
+ 109:Core/Src/can-user.c **** 					temp_threshold++;
+ 805              		.loc 1 109 29 is_stmt 0 discriminator 3 view .LVU238
+ 806 00da 04F13003 		add	r3, r4, #48
+ 807 00de 6B44     		add	r3, sp, r3
+ 808 00e0 13F8081C 		ldrb	r1, [r3, #-8]	@ zero_extendqisi2
+ 109:Core/Src/can-user.c **** 					temp_threshold++;
+ 809              		.loc 1 109 21 discriminator 3 view .LVU239
+ 810 00e4 1368     		ldr	r3, [r2]
+ 811 00e6 03F8011B 		strb	r1, [r3], #1
+ 110:Core/Src/can-user.c **** 				}
+ 812              		.loc 1 110 6 is_stmt 1 discriminator 3 view .LVU240
+ 110:Core/Src/can-user.c **** 				}
+ 813              		.loc 1 110 20 is_stmt 0 discriminator 3 view .LVU241
+ 814 00ea 1360     		str	r3, [r2]
+ 108:Core/Src/can-user.c **** 					*temp_threshold=aRxData[i];
+ 815              		.loc 1 108 23 is_stmt 1 discriminator 3 view .LVU242
+ 816 00ec 0134     		adds	r4, r4, #1
+ 817              	.LVL59:
+ 108:Core/Src/can-user.c **** 					*temp_threshold=aRxData[i];
+ 818              		.loc 1 108 23 is_stmt 0 discriminator 3 view .LVU243
+ 819 00ee E4B2     		uxtb	r4, r4
+ 820              	.LVL60:
+ 821              	.L53:
+ 108:Core/Src/can-user.c **** 					*temp_threshold=aRxData[i];
+ 822              		.loc 1 108 18 is_stmt 1 discriminator 1 view .LVU244
+ 823 00f0 072C     		cmp	r4, #7
+ 824 00f2 F1D9     		bls	.L55
+ 825              	.LBE3:
+ 112:Core/Src/can-user.c **** 				if(threshold_id>0X14D){			//修改到threshold数组的最后一个值, 则进行指针的复�
+ 826              		.loc 1 112 5 view .LVU245
+ 112:Core/Src/can-user.c **** 				if(threshold_id>0X14D){			//修改到threshold数组的最后一个值, 则进行指针的复�
+ 827              		.loc 1 112 17 is_stmt 0 view .LVU246
+ 828 00f4 2B4A     		ldr	r2, .L66+4
+ 829 00f6 1388     		ldrh	r3, [r2]
+ 830 00f8 9BB2     		uxth	r3, r3
+ 831 00fa 0133     		adds	r3, r3, #1
+ 832 00fc 9BB2     		uxth	r3, r3
+ 833 00fe 1380     		strh	r3, [r2]	@ movhi
+ 113:Core/Src/can-user.c **** 					threshold_id=0x140;
+ 834              		.loc 1 113 5 is_stmt 1 view .LVU247
+ 113:Core/Src/can-user.c **** 					threshold_id=0x140;
+ 835              		.loc 1 113 20 is_stmt 0 view .LVU248
+ 836 0100 1388     		ldrh	r3, [r2]
+ 837 0102 9BB2     		uxth	r3, r3
+ 113:Core/Src/can-user.c **** 					threshold_id=0x140;
+ 838              		.loc 1 113 7 view .LVU249
+ 839 0104 B3F5A77F 		cmp	r3, #334
+ 840 0108 9AD3     		bcc	.L54
+ 114:Core/Src/can-user.c **** 					temp_threshold=(vu8*)&E03.Threshold;
+ 841              		.loc 1 114 6 is_stmt 1 view .LVU250
+ 114:Core/Src/can-user.c **** 					temp_threshold=(vu8*)&E03.Threshold;
+ 842              		.loc 1 114 18 is_stmt 0 view .LVU251
+ 843 010a 1346     		mov	r3, r2
+ 844 010c 4FF4A072 		mov	r2, #320
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 22
+
+
+ 845 0110 1A80     		strh	r2, [r3]	@ movhi
+ 115:Core/Src/can-user.c **** 					E03.State.Init_flag=1;
+ 846              		.loc 1 115 6 is_stmt 1 view .LVU252
+ 115:Core/Src/can-user.c **** 					E03.State.Init_flag=1;
+ 847              		.loc 1 115 20 is_stmt 0 view .LVU253
+ 848 0112 284C     		ldr	r4, .L66+20
+ 849              	.LVL61:
+ 115:Core/Src/can-user.c **** 					E03.State.Init_flag=1;
+ 850              		.loc 1 115 20 view .LVU254
+ 851 0114 264B     		ldr	r3, .L66+16
+ 852 0116 1C60     		str	r4, [r3]
+ 116:Core/Src/can-user.c **** 					Flash_SE(Flash_Sec_Init_Flag);	//向Flash存进最新的flag
+ 853              		.loc 1 116 6 is_stmt 1 view .LVU255
+ 116:Core/Src/can-user.c **** 					Flash_SE(Flash_Sec_Init_Flag);	//向Flash存进最新的flag
+ 854              		.loc 1 116 25 is_stmt 0 view .LVU256
+ 855 0118 0125     		movs	r5, #1
+ 856 011a A4F5B474 		sub	r4, r4, #360
+ 857 011e 04F80F5F 		strb	r5, [r4, #15]!
+ 117:Core/Src/can-user.c **** 					Flash_Write((u8*)&E03.State.Init_flag, Flash_Addr_Init_Flag, sizeof(E03.State.Init_flag)/sizeo
+ 858              		.loc 1 117 6 is_stmt 1 view .LVU257
+ 859 0122 0320     		movs	r0, #3
+ 860 0124 FFF7FEFF 		bl	Flash_SE
+ 861              	.LVL62:
+ 118:Core/Src/can-user.c **** 					Flash_Write_Threshold();
+ 862              		.loc 1 118 6 view .LVU258
+ 863 0128 2A46     		mov	r2, r5
+ 864 012a 4FF44051 		mov	r1, #12288
+ 865 012e 2046     		mov	r0, r4
+ 866 0130 FFF7FEFF 		bl	Flash_Write
+ 867              	.LVL63:
+ 119:Core/Src/can-user.c **** 				}
+ 868              		.loc 1 119 6 view .LVU259
+ 869 0134 FFF7FEFF 		bl	Flash_Write_Threshold
+ 870              	.LVL64:
+ 871 0138 82E7     		b	.L54
+ 872              	.L63:
+ 123:Core/Src/can-user.c **** 			}
+ 873              		.loc 1 123 5 view .LVU260
+ 874 013a 0023     		movs	r3, #0
+ 875 013c 0093     		str	r3, [sp]
+ 876 013e 0123     		movs	r3, #1
+ 877 0140 0E22     		movs	r2, #14
+ 878 0142 4FF4A071 		mov	r1, #320
+ 879 0146 1B48     		ldr	r0, .L66+20
+ 880 0148 FFF7FEFF 		bl	Can_Send_Package
+ 881              	.LVL65:
+ 882 014c 7CE7     		b	.L56
+ 883              	.L64:
+ 127:Core/Src/can-user.c **** 				E03.Tooling.AIRN_Ctrl = aRxData[1];
+ 884              		.loc 1 127 5 view .LVU261
+ 127:Core/Src/can-user.c **** 				E03.Tooling.AIRN_Ctrl = aRxData[1];
+ 885              		.loc 1 127 36 is_stmt 0 view .LVU262
+ 886 014e 9DF82810 		ldrb	r1, [sp, #40]	@ zero_extendqisi2
+ 127:Core/Src/can-user.c **** 				E03.Tooling.AIRN_Ctrl = aRxData[1];
+ 887              		.loc 1 127 27 view .LVU263
+ 888 0152 154B     		ldr	r3, .L66+8
+ 889 0154 83F8D811 		strb	r1, [r3, #472]
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 23
+
+
+ 128:Core/Src/can-user.c **** 				E03.Tooling.PrechargeAIR_Ctrl = aRxData[2];
+ 890              		.loc 1 128 5 is_stmt 1 view .LVU264
+ 128:Core/Src/can-user.c **** 				E03.Tooling.PrechargeAIR_Ctrl = aRxData[2];
+ 891              		.loc 1 128 36 is_stmt 0 view .LVU265
+ 892 0158 9DF82910 		ldrb	r1, [sp, #41]	@ zero_extendqisi2
+ 128:Core/Src/can-user.c **** 				E03.Tooling.PrechargeAIR_Ctrl = aRxData[2];
+ 893              		.loc 1 128 27 view .LVU266
+ 894 015c 83F8D911 		strb	r1, [r3, #473]
+ 129:Core/Src/can-user.c **** 				E03.Tooling.Error_Ctrl = aRxData[3];
+ 895              		.loc 1 129 5 is_stmt 1 view .LVU267
+ 129:Core/Src/can-user.c **** 				E03.Tooling.Error_Ctrl = aRxData[3];
+ 896              		.loc 1 129 44 is_stmt 0 view .LVU268
+ 897 0160 9DF82A10 		ldrb	r1, [sp, #42]	@ zero_extendqisi2
+ 129:Core/Src/can-user.c **** 				E03.Tooling.Error_Ctrl = aRxData[3];
+ 898              		.loc 1 129 35 view .LVU269
+ 899 0164 83F8DA11 		strb	r1, [r3, #474]
+ 130:Core/Src/can-user.c **** 				E03.Tooling.Fans_Ctrl = aRxData[4];
+ 900              		.loc 1 130 5 is_stmt 1 view .LVU270
+ 130:Core/Src/can-user.c **** 				E03.Tooling.Fans_Ctrl = aRxData[4];
+ 901              		.loc 1 130 37 is_stmt 0 view .LVU271
+ 902 0168 9DF82B10 		ldrb	r1, [sp, #43]	@ zero_extendqisi2
+ 130:Core/Src/can-user.c **** 				E03.Tooling.Fans_Ctrl = aRxData[4];
+ 903              		.loc 1 130 28 view .LVU272
+ 904 016c 83F8DB11 		strb	r1, [r3, #475]
+ 131:Core/Src/can-user.c **** 				E03.Tooling.Manual_Enable = aRxData[5];
+ 905              		.loc 1 131 5 is_stmt 1 view .LVU273
+ 131:Core/Src/can-user.c **** 				E03.Tooling.Manual_Enable = aRxData[5];
+ 906              		.loc 1 131 36 is_stmt 0 view .LVU274
+ 907 0170 9DF82C10 		ldrb	r1, [sp, #44]	@ zero_extendqisi2
+ 131:Core/Src/can-user.c **** 				E03.Tooling.Manual_Enable = aRxData[5];
+ 908              		.loc 1 131 27 view .LVU275
+ 909 0174 83F8DC11 		strb	r1, [r3, #476]
+ 132:Core/Src/can-user.c **** 				E03.Tooling.Active_onHV = aRxData[6];
+ 910              		.loc 1 132 5 is_stmt 1 view .LVU276
+ 132:Core/Src/can-user.c **** 				E03.Tooling.Active_onHV = aRxData[6];
+ 911              		.loc 1 132 40 is_stmt 0 view .LVU277
+ 912 0178 9DF82D10 		ldrb	r1, [sp, #45]	@ zero_extendqisi2
+ 132:Core/Src/can-user.c **** 				E03.Tooling.Active_onHV = aRxData[6];
+ 913              		.loc 1 132 31 view .LVU278
+ 914 017c 83F8DD11 		strb	r1, [r3, #477]
+ 133:Core/Src/can-user.c **** 				E03.State.BMS_State=BMS_Manual_MODE;	//进入工装模式
+ 915              		.loc 1 133 5 is_stmt 1 view .LVU279
+ 133:Core/Src/can-user.c **** 				E03.State.BMS_State=BMS_Manual_MODE;	//进入工装模式
+ 916              		.loc 1 133 38 is_stmt 0 view .LVU280
+ 917 0180 9DF82E10 		ldrb	r1, [sp, #46]	@ zero_extendqisi2
+ 133:Core/Src/can-user.c **** 				E03.State.BMS_State=BMS_Manual_MODE;	//进入工装模式
+ 918              		.loc 1 133 29 view .LVU281
+ 919 0184 83F8DE11 		strb	r1, [r3, #478]
+ 134:Core/Src/can-user.c **** 			}
+ 920              		.loc 1 134 5 is_stmt 1 view .LVU282
+ 134:Core/Src/can-user.c **** 			}
+ 921              		.loc 1 134 24 is_stmt 0 view .LVU283
+ 922 0188 0A21     		movs	r1, #10
+ 923 018a 9973     		strb	r1, [r3, #14]
+ 924 018c 60E7     		b	.L57
+ 925              	.L65:
+ 139:Core/Src/can-user.c **** 				}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 24
+
+
+ 926              		.loc 1 139 6 is_stmt 1 view .LVU284
+ 139:Core/Src/can-user.c **** 				}
+ 927              		.loc 1 139 27 is_stmt 0 view .LVU285
+ 928 018e 064B     		ldr	r3, .L66+8
+ 929 0190 0122     		movs	r2, #1
+ 930 0192 83F85121 		strb	r2, [r3, #337]
+ 931 0196 42E7     		b	.L48
+ 932              	.LVL66:
+ 933              	.L49:
+ 149:Core/Src/can-user.c **** 	}
+ 934              		.loc 1 149 3 is_stmt 1 view .LVU286
+ 935 0198 FFF7FEFF 		bl	Error_Handler
+ 936              	.LVL67:
+ 151:Core/Src/can-user.c **** //CAN2中断回调函数
+ 937              		.loc 1 151 1 is_stmt 0 view .LVU287
+ 938 019c 3FE7     		b	.L48
+ 939              	.L67:
+ 940 019e 00BF     		.align	2
+ 941              	.L66:
+ 942 01a0 00000000 		.word	hcan1
+ 943 01a4 00000000 		.word	.LANCHOR0
+ 944 01a8 00000000 		.word	E03
+ 945 01ac 00000000 		.word	Hall_Count
+ 946 01b0 00000000 		.word	.LANCHOR1
+ 947 01b4 68010000 		.word	E03+360
+ 948              		.cfi_endproc
+ 949              	.LFE67:
+ 951              		.section	.text.CAN_Transmit,"ax",%progbits
+ 952              		.align	1
+ 953              		.global	CAN_Transmit
+ 954              		.syntax unified
+ 955              		.thumb
+ 956              		.thumb_func
+ 958              	CAN_Transmit:
+ 959              	.LVL68:
+ 960              	.LFB71:
+ 234:Core/Src/can-user.c **** 
+ 235:Core/Src/can-user.c **** /**
+ 236:Core/Src/can-user.c ****  * 网上抄下来的, 还挺牛的, 可能不一定用
+ 237:Core/Src/can-user.c ****  * CAN数据传输
+ 238:Core/Src/can-user.c ****  * @param  buf    待发送的数据
+ 239:Core/Src/can-user.c ****  * @param  len    数据长度
+ 240:Core/Src/can-user.c ****  * @param  number CAN编号，=0：CAN1，=1：CAN2
+ 241:Core/Src/can-user.c ****  * @return        0：成功  other：失败
+ 242:Core/Src/can-user.c ****  */
+ 243:Core/Src/can-user.c **** uint8_t CAN_Transmit(const void* buf, uint32_t len, uint8_t number){
+ 961              		.loc 1 243 68 is_stmt 1 view -0
+ 962              		.cfi_startproc
+ 963              		@ args = 0, pretend = 0, frame = 32
+ 964              		@ frame_needed = 0, uses_anonymous_args = 0
+ 965              		.loc 1 243 68 is_stmt 0 view .LVU289
+ 966 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 967              	.LCFI21:
+ 968              		.cfi_def_cfa_offset 20
+ 969              		.cfi_offset 4, -20
+ 970              		.cfi_offset 5, -16
+ 971              		.cfi_offset 6, -12
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 25
+
+
+ 972              		.cfi_offset 7, -8
+ 973              		.cfi_offset 14, -4
+ 974 0002 89B0     		sub	sp, sp, #36
+ 975              	.LCFI22:
+ 976              		.cfi_def_cfa_offset 56
+ 977 0004 0746     		mov	r7, r0
+ 978 0006 0C46     		mov	r4, r1
+ 979 0008 1646     		mov	r6, r2
+ 244:Core/Src/can-user.c ****     uint32_t txmailbox = 0;
+ 980              		.loc 1 244 5 is_stmt 1 view .LVU290
+ 981              		.loc 1 244 14 is_stmt 0 view .LVU291
+ 982 000a 0025     		movs	r5, #0
+ 983 000c 0795     		str	r5, [sp, #28]
+ 245:Core/Src/can-user.c ****     uint32_t offset = 0;
+ 984              		.loc 1 245 5 is_stmt 1 view .LVU292
+ 985              	.LVL69:
+ 246:Core/Src/can-user.c ****     CAN_TxHeaderTypeDef hdr;
+ 986              		.loc 1 246 5 view .LVU293
+ 247:Core/Src/can-user.c **** 
+ 248:Core/Src/can-user.c ****     hdr.IDE = CAN_ID_EXT;													// ID类型：扩展帧
+ 987              		.loc 1 248 5 view .LVU294
+ 988              		.loc 1 248 13 is_stmt 0 view .LVU295
+ 989 000e 0423     		movs	r3, #4
+ 990 0010 0393     		str	r3, [sp, #12]
+ 249:Core/Src/can-user.c ****     hdr.RTR = CAN_RTR_DATA;													// 帧类型：数据帧
+ 991              		.loc 1 249 5 is_stmt 1 view .LVU296
+ 992              		.loc 1 249 13 is_stmt 0 view .LVU297
+ 993 0012 0495     		str	r5, [sp, #16]
+ 250:Core/Src/can-user.c **** //    hdr.StdId = 0;															// 标准帧ID,最大11位，也就是0x7FF
+ 251:Core/Src/can-user.c **** //    hdr.ExtId = number == 0 ? CAN1_BASE_ID : CAN2_BASE_ID;					// 扩展帧ID,最大29位，也�
+ 252:Core/Src/can-user.c ****     hdr.TransmitGlobalTime = DISABLE;
+ 994              		.loc 1 252 5 is_stmt 1 view .LVU298
+ 995              		.loc 1 252 28 is_stmt 0 view .LVU299
+ 996 0014 8DF81850 		strb	r5, [sp, #24]
+ 253:Core/Src/can-user.c ****     while (len != 0){
+ 997              		.loc 1 253 5 is_stmt 1 view .LVU300
+ 998              		.loc 1 253 11 is_stmt 0 view .LVU301
+ 999 0018 09E0     		b	.L69
+ 1000              	.LVL70:
+ 1001              	.L73:
+ 254:Core/Src/can-user.c ****         hdr.DLC = len > 8 ? 8 : len;			// 数据长度
+ 255:Core/Src/can-user.c ****         if (HAL_CAN_AddTxMessage(number == 0 ? &hcan1 : &hcan2, &hdr, ((uint8_t *)buf) + offset, &t
+ 1002              		.loc 1 255 13 view .LVU302
+ 1003 001a 0C48     		ldr	r0, .L77
+ 1004              	.L70:
+ 1005              		.loc 1 255 13 discriminator 4 view .LVU303
+ 1006 001c 07AB     		add	r3, sp, #28
+ 1007 001e 7A19     		adds	r2, r7, r5
+ 1008 0020 01A9     		add	r1, sp, #4
+ 1009 0022 FFF7FEFF 		bl	HAL_CAN_AddTxMessage
+ 1010              	.LVL71:
+ 1011              		.loc 1 255 12 discriminator 4 view .LVU304
+ 1012 0026 78B9     		cbnz	r0, .L74
+ 256:Core/Src/can-user.c ****             return 1;
+ 257:Core/Src/can-user.c ****         offset += hdr.DLC;
+ 1013              		.loc 1 257 9 is_stmt 1 view .LVU305
+ 1014              		.loc 1 257 22 is_stmt 0 view .LVU306
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 26
+
+
+ 1015 0028 059B     		ldr	r3, [sp, #20]
+ 1016              		.loc 1 257 16 view .LVU307
+ 1017 002a 1D44     		add	r5, r5, r3
+ 1018              	.LVL72:
+ 258:Core/Src/can-user.c ****         len -= hdr.DLC;
+ 1019              		.loc 1 258 9 is_stmt 1 view .LVU308
+ 1020              		.loc 1 258 13 is_stmt 0 view .LVU309
+ 1021 002c E41A     		subs	r4, r4, r3
+ 1022              	.LVL73:
+ 1023              	.L69:
+ 253:Core/Src/can-user.c ****         hdr.DLC = len > 8 ? 8 : len;			// 数据长度
+ 1024              		.loc 1 253 16 is_stmt 1 view .LVU310
+ 1025 002e 44B1     		cbz	r4, .L76
+ 254:Core/Src/can-user.c ****         if (HAL_CAN_AddTxMessage(number == 0 ? &hcan1 : &hcan2, &hdr, ((uint8_t *)buf) + offset, &t
+ 1026              		.loc 1 254 9 view .LVU311
+ 254:Core/Src/can-user.c ****         if (HAL_CAN_AddTxMessage(number == 0 ? &hcan1 : &hcan2, &hdr, ((uint8_t *)buf) + offset, &t
+ 1027              		.loc 1 254 31 is_stmt 0 view .LVU312
+ 1028 0030 2346     		mov	r3, r4
+ 1029 0032 082C     		cmp	r4, #8
+ 1030 0034 28BF     		it	cs
+ 1031 0036 0823     		movcs	r3, #8
+ 254:Core/Src/can-user.c ****         if (HAL_CAN_AddTxMessage(number == 0 ? &hcan1 : &hcan2, &hdr, ((uint8_t *)buf) + offset, &t
+ 1032              		.loc 1 254 17 view .LVU313
+ 1033 0038 0593     		str	r3, [sp, #20]
+ 255:Core/Src/can-user.c ****             return 1;
+ 1034              		.loc 1 255 9 is_stmt 1 view .LVU314
+ 255:Core/Src/can-user.c ****             return 1;
+ 1035              		.loc 1 255 13 is_stmt 0 view .LVU315
+ 1036 003a 002E     		cmp	r6, #0
+ 1037 003c EDD1     		bne	.L73
+ 1038 003e 0448     		ldr	r0, .L77+4
+ 1039 0040 ECE7     		b	.L70
+ 1040              	.L76:
+ 259:Core/Src/can-user.c ****     }
+ 260:Core/Src/can-user.c ****     return 0;
+ 1041              		.loc 1 260 12 view .LVU316
+ 1042 0042 0020     		movs	r0, #0
+ 1043              	.L71:
+ 261:Core/Src/can-user.c **** }
+ 1044              		.loc 1 261 1 view .LVU317
+ 1045 0044 09B0     		add	sp, sp, #36
+ 1046              	.LCFI23:
+ 1047              		.cfi_remember_state
+ 1048              		.cfi_def_cfa_offset 20
+ 1049              		@ sp needed
+ 1050 0046 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 1051              	.LVL74:
+ 1052              	.L74:
+ 1053              	.LCFI24:
+ 1054              		.cfi_restore_state
+ 256:Core/Src/can-user.c ****         offset += hdr.DLC;
+ 1055              		.loc 1 256 20 view .LVU318
+ 1056 0048 0120     		movs	r0, #1
+ 1057 004a FBE7     		b	.L71
+ 1058              	.L78:
+ 1059              		.align	2
+ 1060              	.L77:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 27
+
+
+ 1061 004c 00000000 		.word	hcan2
+ 1062 0050 00000000 		.word	hcan1
+ 1063              		.cfi_endproc
+ 1064              	.LFE71:
+ 1066              		.section	.text.Can_Send_Data,"ax",%progbits
+ 1067              		.align	1
+ 1068              		.global	Can_Send_Data
+ 1069              		.syntax unified
+ 1070              		.thumb
+ 1071              		.thumb_func
+ 1073              	Can_Send_Data:
+ 1074              	.LVL75:
+ 1075              	.LFB72:
+ 262:Core/Src/can-user.c **** /**
+ 263:Core/Src/can-user.c ****  * CAN发送数据, 具体为什么要设置成这样请看BMSCAN手册
+ 264:Core/Src/can-user.c ****  * @param  buf    待发送的数据
+ 265:Core/Src/can-user.c ****  * @param  len    数据长度
+ 266:Core/Src/can-user.c ****  * @param  number CAN编号，=0：CAN1，=1：CAN2
+ 267:Core/Src/can-user.c ****  * @return        0：成功  other：失败
+ 268:Core/Src/can-user.c ****  */
+ 269:Core/Src/can-user.c **** void Can_Send_Data(u8 can1_state,u8 can2_state){
+ 1076              		.loc 1 269 48 is_stmt 1 view -0
+ 1077              		.cfi_startproc
+ 1078              		@ args = 0, pretend = 0, frame = 0
+ 1079              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1080              		.loc 1 269 48 is_stmt 0 view .LVU320
+ 1081 0000 70B5     		push	{r4, r5, r6, lr}
+ 1082              	.LCFI25:
+ 1083              		.cfi_def_cfa_offset 16
+ 1084              		.cfi_offset 4, -16
+ 1085              		.cfi_offset 5, -12
+ 1086              		.cfi_offset 6, -8
+ 1087              		.cfi_offset 14, -4
+ 1088 0002 82B0     		sub	sp, sp, #8
+ 1089              	.LCFI26:
+ 1090              		.cfi_def_cfa_offset 24
+ 1091 0004 0446     		mov	r4, r0
+ 1092 0006 0D46     		mov	r5, r1
+ 270:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.State,CAN_ID_BMS_state,CAN_PL_BMS_state,can1_state, can2_state);	//BMS�
+ 1093              		.loc 1 270 2 is_stmt 1 view .LVU321
+ 1094 0008 324E     		ldr	r6, .L81
+ 1095 000a 0091     		str	r1, [sp]
+ 1096 000c 0346     		mov	r3, r0
+ 1097 000e 0222     		movs	r2, #2
+ 1098 0010 4FF48071 		mov	r1, #256
+ 1099              	.LVL76:
+ 1100              		.loc 1 270 2 is_stmt 0 view .LVU322
+ 1101 0014 3046     		mov	r0, r6
+ 1102              	.LVL77:
+ 1103              		.loc 1 270 2 view .LVU323
+ 1104 0016 FFF7FEFF 		bl	Can_Send_Package
+ 1105              	.LVL78:
+ 271:Core/Src/can-user.c **** 	/*电芯状态*/
+ 272:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Cell.Vol[0], CAN_ID_CELL_Vol, CAN_PL_CELL_Vol,  can1_state, can2_state)
+ 1106              		.loc 1 272 2 is_stmt 1 view .LVU324
+ 1107 001a 0095     		str	r5, [sp]
+ 1108 001c 2346     		mov	r3, r4
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 28
+
+
+ 1109 001e 1822     		movs	r2, #24
+ 1110 0020 4FF48271 		mov	r1, #260
+ 1111 0024 06F11400 		add	r0, r6, #20
+ 1112 0028 FFF7FEFF 		bl	Can_Send_Package
+ 1113              	.LVL79:
+ 273:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Cell.Temp[0], CAN_ID_CELL_Tem, CAN_PL_CELL_Tem,  can1_state, can2_state
+ 1114              		.loc 1 273 2 view .LVU325
+ 1115 002c 0095     		str	r5, [sp]
+ 1116 002e 2346     		mov	r3, r4
+ 1117 0030 0922     		movs	r2, #9
+ 1118 0032 4FF48E71 		mov	r1, #284
+ 1119 0036 06F1D400 		add	r0, r6, #212
+ 1120 003a FFF7FEFF 		bl	Can_Send_Package
+ 1121              	.LVL80:
+ 274:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Cell.MaxVol, CAN_ID_CELL_MVol, CAN_PL_CELL_MVol,  can1_state, can2_stat
+ 1122              		.loc 1 274 2 view .LVU326
+ 1123 003e 0095     		str	r5, [sp]
+ 1124 0040 2346     		mov	r3, r4
+ 1125 0042 0122     		movs	r2, #1
+ 1126 0044 40F22511 		movw	r1, #293
+ 1127 0048 06F58E70 		add	r0, r6, #284
+ 1128 004c FFF7FEFF 		bl	Can_Send_Package
+ 1129              	.LVL81:
+ 275:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Cell.DCC[0], CAN_ID_CELL_Dcc, CAN_PL_CELL_Dcc,  can1_state, can2_state)
+ 1130              		.loc 1 275 2 view .LVU327
+ 1131 0050 0095     		str	r5, [sp]
+ 1132 0052 2346     		mov	r3, r4
+ 1133 0054 0222     		movs	r2, #2
+ 1134 0056 4FF49371 		mov	r1, #294
+ 1135 005a 06F59270 		add	r0, r6, #292
+ 1136 005e FFF7FEFF 		bl	Can_Send_Package
+ 1137              	.LVL82:
+ 276:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Cell.MaxVol_No, CAN_ID_CELL_MVolNo, CAN_PL_CELL_MVolNo, can1_state, can
+ 1138              		.loc 1 276 2 view .LVU328
+ 1139 0062 0095     		str	r5, [sp]
+ 1140 0064 2346     		mov	r3, r4
+ 1141 0066 0122     		movs	r2, #1
+ 1142 0068 4FF49471 		mov	r1, #296
+ 1143 006c 06F59870 		add	r0, r6, #304
+ 1144 0070 FFF7FEFF 		bl	Can_Send_Package
+ 1145              	.LVL83:
+ 277:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Relay,CAN_ID_RELAY_STATE,CAN_PL_RELAY_STATE,can1_state, can2_state);	//
+ 1146              		.loc 1 277 2 view .LVU329
+ 1147 0074 0095     		str	r5, [sp]
+ 1148 0076 2346     		mov	r3, r4
+ 1149 0078 0122     		movs	r2, #1
+ 1150 007a 4FF49871 		mov	r1, #304
+ 1151 007e 06F59A70 		add	r0, r6, #308
+ 1152 0082 FFF7FEFF 		bl	Can_Send_Package
+ 1153              	.LVL84:
+ 278:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.charge,CAN_ID_CHARGE_STATE,CAN_PL_CHARGE_STATE,can1_state, can2_state);
+ 1154              		.loc 1 278 2 view .LVU330
+ 1155 0086 0095     		str	r5, [sp]
+ 1156 0088 2346     		mov	r3, r4
+ 1157 008a 0122     		movs	r2, #1
+ 1158 008c 40F23111 		movw	r1, #305
+ 1159 0090 06F59C70 		add	r0, r6, #312
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 29
+
+
+ 1160 0094 FFF7FEFF 		bl	Can_Send_Package
+ 1161              	.LVL85:
+ 279:Core/Src/can-user.c **** 	/*告警*/
+ 280:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Alarm,CAN_ID_ALARM,CAN_PL_ALARM,can1_state, can2_state);
+ 1162              		.loc 1 280 2 view .LVU331
+ 1163 0098 0095     		str	r5, [sp]
+ 1164 009a 2346     		mov	r3, r4
+ 1165 009c 0322     		movs	r2, #3
+ 1166 009e 4FF49971 		mov	r1, #306
+ 1167 00a2 06F5A070 		add	r0, r6, #320
+ 1168 00a6 FFF7FEFF 		bl	Can_Send_Package
+ 1169              	.LVL86:
+ 281:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Alarm.Openwire_Vol[0], CAN_ID_OpenVol, CAN_PL_OpenVol, can1_state, can2
+ 1170              		.loc 1 281 2 view .LVU332
+ 1171 00aa 0095     		str	r5, [sp]
+ 1172 00ac 2346     		mov	r3, r4
+ 1173 00ae 0222     		movs	r2, #2
+ 1174 00b0 40F23511 		movw	r1, #309
+ 1175 00b4 06F5AB70 		add	r0, r6, #342
+ 1176 00b8 FFF7FEFF 		bl	Can_Send_Package
+ 1177              	.LVL87:
+ 282:Core/Src/can-user.c **** 	Can_Send_Package((u8*)&E03.Alarm.Openwire_Temp[0], CAN_ID_OpenTem, CAN_PL_OpenTem, can1_state, can
+ 1178              		.loc 1 282 2 view .LVU333
+ 1179 00bc 0095     		str	r5, [sp]
+ 1180 00be 2346     		mov	r3, r4
+ 1181 00c0 0122     		movs	r2, #1
+ 1182 00c2 40F23711 		movw	r1, #311
+ 1183 00c6 06F26310 		addw	r0, r6, #355
+ 1184 00ca FFF7FEFF 		bl	Can_Send_Package
+ 1185              	.LVL88:
+ 283:Core/Src/can-user.c **** 	/*工装的数据只接受但不发, 阈值等待ID为14E的CAN再发送阈值*/
+ 284:Core/Src/can-user.c **** }
+ 1186              		.loc 1 284 1 is_stmt 0 view .LVU334
+ 1187 00ce 02B0     		add	sp, sp, #8
+ 1188              	.LCFI27:
+ 1189              		.cfi_def_cfa_offset 16
+ 1190              		@ sp needed
+ 1191 00d0 70BD     		pop	{r4, r5, r6, pc}
+ 1192              	.L82:
+ 1193 00d2 00BF     		.align	2
+ 1194              	.L81:
+ 1195 00d4 00000000 		.word	E03
+ 1196              		.cfi_endproc
+ 1197              	.LFE72:
+ 1199              		.section	.text.Can_Send_Charge,"ax",%progbits
+ 1200              		.align	1
+ 1201              		.global	Can_Send_Charge
+ 1202              		.syntax unified
+ 1203              		.thumb
+ 1204              		.thumb_func
+ 1206              	Can_Send_Charge:
+ 1207              	.LVL89:
+ 1208              	.LFB73:
+ 285:Core/Src/can-user.c **** /**
+ 286:Core/Src/can-user.c ****  * CAN发送充电数据, 具体协议需要看铁城充电机的协议
+ 287:Core/Src/can-user.c ****  */
+ 288:Core/Src/can-user.c **** void Can_Send_Charge(u8 Charge_state){
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 30
+
+
+ 1209              		.loc 1 288 38 is_stmt 1 view -0
+ 1210              		.cfi_startproc
+ 1211              		@ args = 0, pretend = 0, frame = 40
+ 1212              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1213              		.loc 1 288 38 is_stmt 0 view .LVU336
+ 1214 0000 10B5     		push	{r4, lr}
+ 1215              	.LCFI28:
+ 1216              		.cfi_def_cfa_offset 8
+ 1217              		.cfi_offset 4, -8
+ 1218              		.cfi_offset 14, -4
+ 1219 0002 8AB0     		sub	sp, sp, #40
+ 1220              	.LCFI29:
+ 1221              		.cfi_def_cfa_offset 48
+ 289:Core/Src/can-user.c **** 	uint8_t aTxData[8];
+ 1222              		.loc 1 289 2 is_stmt 1 view .LVU337
+ 290:Core/Src/can-user.c **** 	CAN_TxHeaderTypeDef TxMessage;
+ 1223              		.loc 1 290 2 view .LVU338
+ 291:Core/Src/can-user.c **** 	u8 i=0;
+ 1224              		.loc 1 291 2 view .LVU339
+ 1225              	.LVL90:
+ 292:Core/Src/can-user.c **** 	u16 time_out=0;
+ 1226              		.loc 1 292 2 view .LVU340
+ 293:Core/Src/can-user.c **** 	uint32_t txmailbox2 = CAN_TX_MAILBOX1;
+ 1227              		.loc 1 293 2 view .LVU341
+ 1228              		.loc 1 293 11 is_stmt 0 view .LVU342
+ 1229 0004 0223     		movs	r3, #2
+ 1230 0006 0193     		str	r3, [sp, #4]
+ 294:Core/Src/can-user.c **** 
+ 295:Core/Src/can-user.c **** //	TxMessage.StdId = 0x3c3;	//其实应该没有用, 本来就应该以拓展帧发给充电机, �
+ 296:Core/Src/can-user.c **** 	TxMessage.ExtId = 0x1806E5F4;
+ 1231              		.loc 1 296 2 is_stmt 1 view .LVU343
+ 1232              		.loc 1 296 18 is_stmt 0 view .LVU344
+ 1233 0008 404B     		ldr	r3, .L98
+ 1234 000a 0393     		str	r3, [sp, #12]
+ 297:Core/Src/can-user.c **** 	TxMessage.IDE = CAN_ID_EXT;
+ 1235              		.loc 1 297 2 is_stmt 1 view .LVU345
+ 1236              		.loc 1 297 16 is_stmt 0 view .LVU346
+ 1237 000c 0423     		movs	r3, #4
+ 1238 000e 0493     		str	r3, [sp, #16]
+ 298:Core/Src/can-user.c **** 	TxMessage.RTR = CAN_RTR_DATA;
+ 1239              		.loc 1 298 2 is_stmt 1 view .LVU347
+ 1240              		.loc 1 298 16 is_stmt 0 view .LVU348
+ 1241 0010 0023     		movs	r3, #0
+ 1242 0012 0593     		str	r3, [sp, #20]
+ 299:Core/Src/can-user.c **** 	TxMessage.DLC = 8;
+ 1243              		.loc 1 299 2 is_stmt 1 view .LVU349
+ 1244              		.loc 1 299 16 is_stmt 0 view .LVU350
+ 1245 0014 0823     		movs	r3, #8
+ 1246 0016 0693     		str	r3, [sp, #24]
+ 300:Core/Src/can-user.c **** 	if(Charge_state==ENABLE){
+ 1247              		.loc 1 300 2 is_stmt 1 view .LVU351
+ 1248              		.loc 1 300 4 is_stmt 0 view .LVU352
+ 1249 0018 0128     		cmp	r0, #1
+ 1250 001a 0DD0     		beq	.L97
+ 301:Core/Src/can-user.c **** 	//定义好发送的CAN数据
+ 302:Core/Src/can-user.c **** 		aTxData[0]=(Charge_Vol>>8);		//充电电压, 输出电压高字节
+ 303:Core/Src/can-user.c **** 		aTxData[1]=(Charge_Vol&0xFF);	//充电电压, 输出电压低字节
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 31
+
+
+ 304:Core/Src/can-user.c **** 		aTxData[4]=0;					//ENABLE代表开启充电机
+ 305:Core/Src/can-user.c **** 		for(i=5;i<8;i++){	//都是保留位, 给没用的数据进行0的初始化,防止数据乱跑
+ 306:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 307:Core/Src/can-user.c **** 		}
+ 308:Core/Src/can-user.c **** 		if(charge_cur_count<5){	//第1-5次
+ 309:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State1>>8);		//充电电流, 输出电流高字节
+ 310:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State1&0xFF);	//充电电流, 输出电流低字节
+ 311:Core/Src/can-user.c **** 			charge_cur_count++;
+ 312:Core/Src/can-user.c **** 		}
+ 313:Core/Src/can-user.c **** 		else if(charge_cur_count<10){	//第5-10次
+ 314:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State2>>8);		//充电电流, 输出电流高字节
+ 315:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State2&0xFF);	//充电电流, 输出电流低字节
+ 316:Core/Src/can-user.c **** 			charge_cur_count++;
+ 317:Core/Src/can-user.c **** 		}
+ 318:Core/Src/can-user.c **** 		else if(charge_cur_count<15){	//第10-15次
+ 319:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State3>>8);		//充电电流, 输出电流高字节
+ 320:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State3&0xFF);	//充电电流, 输出电流低字节
+ 321:Core/Src/can-user.c **** 			charge_cur_count++;
+ 322:Core/Src/can-user.c **** 		}
+ 323:Core/Src/can-user.c **** 		else{	//第15次以后
+ 324:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State4>>8);		//充电电流, 输出电流高字节
+ 325:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State4&0xFF);	//充电电流, 输出电流低字节
+ 326:Core/Src/can-user.c **** 		}
+ 327:Core/Src/can-user.c **** 	}
+ 328:Core/Src/can-user.c **** 	else{
+ 329:Core/Src/can-user.c **** 		//定义好发送的CAN数据
+ 330:Core/Src/can-user.c **** 		aTxData[0]=0;						//关闭充电机, 电压和电流都给0
+ 1251              		.loc 1 330 3 is_stmt 1 view .LVU353
+ 1252              		.loc 1 330 13 is_stmt 0 view .LVU354
+ 1253 001c 0023     		movs	r3, #0
+ 1254 001e 8DF82030 		strb	r3, [sp, #32]
+ 331:Core/Src/can-user.c **** 		aTxData[1]=0;
+ 1255              		.loc 1 331 3 is_stmt 1 view .LVU355
+ 1256              		.loc 1 331 13 is_stmt 0 view .LVU356
+ 1257 0022 8DF82130 		strb	r3, [sp, #33]
+ 332:Core/Src/can-user.c **** 		aTxData[2]=0;
+ 1258              		.loc 1 332 3 is_stmt 1 view .LVU357
+ 1259              		.loc 1 332 13 is_stmt 0 view .LVU358
+ 1260 0026 8DF82230 		strb	r3, [sp, #34]
+ 333:Core/Src/can-user.c **** 		aTxData[3]=0;
+ 1261              		.loc 1 333 3 is_stmt 1 view .LVU359
+ 1262              		.loc 1 333 13 is_stmt 0 view .LVU360
+ 1263 002a 8DF82330 		strb	r3, [sp, #35]
+ 334:Core/Src/can-user.c **** 		aTxData[4]=1;						//DISABLE代表开启充电机
+ 1264              		.loc 1 334 3 is_stmt 1 view .LVU361
+ 1265              		.loc 1 334 13 is_stmt 0 view .LVU362
+ 1266 002e 0123     		movs	r3, #1
+ 1267 0030 8DF82430 		strb	r3, [sp, #36]
+ 335:Core/Src/can-user.c **** 		for(i=5;i<8;i++){					//都是保留位, 给没用的数据进行0的初始化,防止数据乱跑
+ 1268              		.loc 1 335 3 is_stmt 1 view .LVU363
+ 1269              	.LVL91:
+ 1270              		.loc 1 335 8 is_stmt 0 view .LVU364
+ 1271 0034 0523     		movs	r3, #5
+ 1272              		.loc 1 335 3 view .LVU365
+ 1273 0036 56E0     		b	.L92
+ 1274              	.LVL92:
+ 1275              	.L97:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 32
+
+
+ 302:Core/Src/can-user.c **** 		aTxData[1]=(Charge_Vol&0xFF);	//充电电压, 输出电压低字节
+ 1276              		.loc 1 302 3 is_stmt 1 view .LVU366
+ 302:Core/Src/can-user.c **** 		aTxData[1]=(Charge_Vol&0xFF);	//充电电压, 输出电压低字节
+ 1277              		.loc 1 302 13 is_stmt 0 view .LVU367
+ 1278 0038 1023     		movs	r3, #16
+ 1279 003a 8DF82030 		strb	r3, [sp, #32]
+ 303:Core/Src/can-user.c **** 		aTxData[4]=0;					//ENABLE代表开启充电机
+ 1280              		.loc 1 303 3 is_stmt 1 view .LVU368
+ 303:Core/Src/can-user.c **** 		aTxData[4]=0;					//ENABLE代表开启充电机
+ 1281              		.loc 1 303 13 is_stmt 0 view .LVU369
+ 1282 003e 4A23     		movs	r3, #74
+ 1283 0040 8DF82130 		strb	r3, [sp, #33]
+ 304:Core/Src/can-user.c **** 		for(i=5;i<8;i++){	//都是保留位, 给没用的数据进行0的初始化,防止数据乱跑
+ 1284              		.loc 1 304 3 is_stmt 1 view .LVU370
+ 304:Core/Src/can-user.c **** 		for(i=5;i<8;i++){	//都是保留位, 给没用的数据进行0的初始化,防止数据乱跑
+ 1285              		.loc 1 304 13 is_stmt 0 view .LVU371
+ 1286 0044 0023     		movs	r3, #0
+ 1287 0046 8DF82430 		strb	r3, [sp, #36]
+ 305:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1288              		.loc 1 305 3 is_stmt 1 view .LVU372
+ 1289              	.LVL93:
+ 305:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1290              		.loc 1 305 8 is_stmt 0 view .LVU373
+ 1291 004a 0523     		movs	r3, #5
+ 305:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1292              		.loc 1 305 3 view .LVU374
+ 1293 004c 07E0     		b	.L85
+ 1294              	.LVL94:
+ 1295              	.L86:
+ 306:Core/Src/can-user.c **** 		}
+ 1296              		.loc 1 306 4 is_stmt 1 discriminator 3 view .LVU375
+ 306:Core/Src/can-user.c **** 		}
+ 1297              		.loc 1 306 14 is_stmt 0 discriminator 3 view .LVU376
+ 1298 004e 03F12802 		add	r2, r3, #40
+ 1299 0052 6A44     		add	r2, sp, r2
+ 1300 0054 0021     		movs	r1, #0
+ 1301 0056 02F8081C 		strb	r1, [r2, #-8]
+ 305:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1302              		.loc 1 305 16 is_stmt 1 discriminator 3 view .LVU377
+ 1303 005a 0133     		adds	r3, r3, #1
+ 1304              	.LVL95:
+ 305:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1305              		.loc 1 305 16 is_stmt 0 discriminator 3 view .LVU378
+ 1306 005c DBB2     		uxtb	r3, r3
+ 1307              	.LVL96:
+ 1308              	.L85:
+ 305:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1309              		.loc 1 305 12 is_stmt 1 discriminator 1 view .LVU379
+ 1310 005e 072B     		cmp	r3, #7
+ 1311 0060 F5D9     		bls	.L86
+ 308:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State1>>8);		//充电电流, 输出电流高字节
+ 1312              		.loc 1 308 3 view .LVU380
+ 308:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State1>>8);		//充电电流, 输出电流高字节
+ 1313              		.loc 1 308 22 is_stmt 0 view .LVU381
+ 1314 0062 2B4B     		ldr	r3, .L98+4
+ 1315              	.LVL97:
+ 308:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State1>>8);		//充电电流, 输出电流高字节
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 33
+
+
+ 1316              		.loc 1 308 22 view .LVU382
+ 1317 0064 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1318 0066 DBB2     		uxtb	r3, r3
+ 308:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State1>>8);		//充电电流, 输出电流高字节
+ 1319              		.loc 1 308 5 view .LVU383
+ 1320 0068 042B     		cmp	r3, #4
+ 1321 006a 0BD8     		bhi	.L87
+ 309:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State1&0xFF);	//充电电流, 输出电流低字节
+ 1322              		.loc 1 309 4 is_stmt 1 view .LVU384
+ 309:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State1&0xFF);	//充电电流, 输出电流低字节
+ 1323              		.loc 1 309 14 is_stmt 0 view .LVU385
+ 1324 006c 0023     		movs	r3, #0
+ 1325 006e 8DF82230 		strb	r3, [sp, #34]
+ 310:Core/Src/can-user.c **** 			charge_cur_count++;
+ 1326              		.loc 1 310 4 is_stmt 1 view .LVU386
+ 310:Core/Src/can-user.c **** 			charge_cur_count++;
+ 1327              		.loc 1 310 14 is_stmt 0 view .LVU387
+ 1328 0072 1423     		movs	r3, #20
+ 1329 0074 8DF82330 		strb	r3, [sp, #35]
+ 311:Core/Src/can-user.c **** 		}
+ 1330              		.loc 1 311 4 is_stmt 1 view .LVU388
+ 311:Core/Src/can-user.c **** 		}
+ 1331              		.loc 1 311 20 is_stmt 0 view .LVU389
+ 1332 0078 254A     		ldr	r2, .L98+4
+ 1333 007a 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 1334 007c 0133     		adds	r3, r3, #1
+ 1335 007e DBB2     		uxtb	r3, r3
+ 1336 0080 1370     		strb	r3, [r2]
+ 1337 0082 32E0     		b	.L88
+ 1338              	.L87:
+ 313:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State2>>8);		//充电电流, 输出电流高字节
+ 1339              		.loc 1 313 8 is_stmt 1 view .LVU390
+ 313:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State2>>8);		//充电电流, 输出电流高字节
+ 1340              		.loc 1 313 27 is_stmt 0 view .LVU391
+ 1341 0084 224B     		ldr	r3, .L98+4
+ 1342 0086 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1343 0088 DBB2     		uxtb	r3, r3
+ 313:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State2>>8);		//充电电流, 输出电流高字节
+ 1344              		.loc 1 313 10 view .LVU392
+ 1345 008a 092B     		cmp	r3, #9
+ 1346 008c 0BD8     		bhi	.L89
+ 314:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State2&0xFF);	//充电电流, 输出电流低字节
+ 1347              		.loc 1 314 4 is_stmt 1 view .LVU393
+ 314:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State2&0xFF);	//充电电流, 输出电流低字节
+ 1348              		.loc 1 314 14 is_stmt 0 view .LVU394
+ 1349 008e 0023     		movs	r3, #0
+ 1350 0090 8DF82230 		strb	r3, [sp, #34]
+ 315:Core/Src/can-user.c **** 			charge_cur_count++;
+ 1351              		.loc 1 315 4 is_stmt 1 view .LVU395
+ 315:Core/Src/can-user.c **** 			charge_cur_count++;
+ 1352              		.loc 1 315 14 is_stmt 0 view .LVU396
+ 1353 0094 1E23     		movs	r3, #30
+ 1354 0096 8DF82330 		strb	r3, [sp, #35]
+ 316:Core/Src/can-user.c **** 		}
+ 1355              		.loc 1 316 4 is_stmt 1 view .LVU397
+ 316:Core/Src/can-user.c **** 		}
+ 1356              		.loc 1 316 20 is_stmt 0 view .LVU398
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 34
+
+
+ 1357 009a 1D4A     		ldr	r2, .L98+4
+ 1358 009c 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 1359 009e 0133     		adds	r3, r3, #1
+ 1360 00a0 DBB2     		uxtb	r3, r3
+ 1361 00a2 1370     		strb	r3, [r2]
+ 1362 00a4 21E0     		b	.L88
+ 1363              	.L89:
+ 318:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State3>>8);		//充电电流, 输出电流高字节
+ 1364              		.loc 1 318 8 is_stmt 1 view .LVU399
+ 318:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State3>>8);		//充电电流, 输出电流高字节
+ 1365              		.loc 1 318 27 is_stmt 0 view .LVU400
+ 1366 00a6 1A4B     		ldr	r3, .L98+4
+ 1367 00a8 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1368 00aa DBB2     		uxtb	r3, r3
+ 318:Core/Src/can-user.c **** 			aTxData[2]=(Charge_Cur_State3>>8);		//充电电流, 输出电流高字节
+ 1369              		.loc 1 318 10 view .LVU401
+ 1370 00ac 0E2B     		cmp	r3, #14
+ 1371 00ae 0BD8     		bhi	.L91
+ 319:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State3&0xFF);	//充电电流, 输出电流低字节
+ 1372              		.loc 1 319 4 is_stmt 1 view .LVU402
+ 319:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State3&0xFF);	//充电电流, 输出电流低字节
+ 1373              		.loc 1 319 14 is_stmt 0 view .LVU403
+ 1374 00b0 0023     		movs	r3, #0
+ 1375 00b2 8DF82230 		strb	r3, [sp, #34]
+ 320:Core/Src/can-user.c **** 			charge_cur_count++;
+ 1376              		.loc 1 320 4 is_stmt 1 view .LVU404
+ 320:Core/Src/can-user.c **** 			charge_cur_count++;
+ 1377              		.loc 1 320 14 is_stmt 0 view .LVU405
+ 1378 00b6 2823     		movs	r3, #40
+ 1379 00b8 8DF82330 		strb	r3, [sp, #35]
+ 321:Core/Src/can-user.c **** 		}
+ 1380              		.loc 1 321 4 is_stmt 1 view .LVU406
+ 321:Core/Src/can-user.c **** 		}
+ 1381              		.loc 1 321 20 is_stmt 0 view .LVU407
+ 1382 00bc 144A     		ldr	r2, .L98+4
+ 1383 00be 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 1384 00c0 0133     		adds	r3, r3, #1
+ 1385 00c2 DBB2     		uxtb	r3, r3
+ 1386 00c4 1370     		strb	r3, [r2]
+ 1387 00c6 10E0     		b	.L88
+ 1388              	.L91:
+ 324:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State4&0xFF);	//充电电流, 输出电流低字节
+ 1389              		.loc 1 324 4 is_stmt 1 view .LVU408
+ 324:Core/Src/can-user.c **** 			aTxData[3]=(Charge_Cur_State4&0xFF);	//充电电流, 输出电流低字节
+ 1390              		.loc 1 324 14 is_stmt 0 view .LVU409
+ 1391 00c8 0023     		movs	r3, #0
+ 1392 00ca 8DF82230 		strb	r3, [sp, #34]
+ 325:Core/Src/can-user.c **** 		}
+ 1393              		.loc 1 325 4 is_stmt 1 view .LVU410
+ 325:Core/Src/can-user.c **** 		}
+ 1394              		.loc 1 325 14 is_stmt 0 view .LVU411
+ 1395 00ce 3223     		movs	r3, #50
+ 1396 00d0 8DF82330 		strb	r3, [sp, #35]
+ 1397 00d4 09E0     		b	.L88
+ 1398              	.LVL98:
+ 1399              	.L93:
+ 336:Core/Src/can-user.c **** 			aTxData[i]=0;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 35
+
+
+ 1400              		.loc 1 336 4 is_stmt 1 discriminator 3 view .LVU412
+ 1401              		.loc 1 336 14 is_stmt 0 discriminator 3 view .LVU413
+ 1402 00d6 03F12802 		add	r2, r3, #40
+ 1403 00da 6A44     		add	r2, sp, r2
+ 1404 00dc 0021     		movs	r1, #0
+ 1405 00de 02F8081C 		strb	r1, [r2, #-8]
+ 335:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1406              		.loc 1 335 16 is_stmt 1 discriminator 3 view .LVU414
+ 1407 00e2 0133     		adds	r3, r3, #1
+ 1408              	.LVL99:
+ 335:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1409              		.loc 1 335 16 is_stmt 0 discriminator 3 view .LVU415
+ 1410 00e4 DBB2     		uxtb	r3, r3
+ 1411              	.LVL100:
+ 1412              	.L92:
+ 335:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1413              		.loc 1 335 12 is_stmt 1 discriminator 1 view .LVU416
+ 1414 00e6 072B     		cmp	r3, #7
+ 1415 00e8 F5D9     		bls	.L93
+ 1416              	.LVL101:
+ 1417              	.L88:
+ 335:Core/Src/can-user.c **** 			aTxData[i]=0;
+ 1418              		.loc 1 335 8 is_stmt 0 view .LVU417
+ 1419 00ea 0024     		movs	r4, #0
+ 1420              	.LVL102:
+ 1421              	.L90:
+ 337:Core/Src/can-user.c **** 		}
+ 338:Core/Src/can-user.c **** 	}
+ 339:Core/Src/can-user.c **** 	//发送CAN数据
+ 340:Core/Src/can-user.c **** 	while((HAL_CAN_AddTxMessage(&hcan2, &TxMessage, aTxData, &txmailbox2) != HAL_OK)&&(time_out<1000))
+ 1422              		.loc 1 340 82 is_stmt 1 view .LVU418
+ 1423              		.loc 1 340 9 is_stmt 0 view .LVU419
+ 1424 00ec 01AB     		add	r3, sp, #4
+ 1425 00ee 08AA     		add	r2, sp, #32
+ 1426 00f0 02A9     		add	r1, sp, #8
+ 1427 00f2 0848     		ldr	r0, .L98+8
+ 1428 00f4 FFF7FEFF 		bl	HAL_CAN_AddTxMessage
+ 1429              	.LVL103:
+ 1430              		.loc 1 340 82 view .LVU420
+ 1431 00f8 28B1     		cbz	r0, .L83
+ 1432              		.loc 1 340 82 discriminator 1 view .LVU421
+ 1433 00fa B4F57A7F 		cmp	r4, #1000
+ 1434 00fe 02D2     		bcs	.L83
+ 341:Core/Src/can-user.c **** 		time_out++;
+ 1435              		.loc 1 341 3 is_stmt 1 view .LVU422
+ 1436              		.loc 1 341 11 is_stmt 0 view .LVU423
+ 1437 0100 0134     		adds	r4, r4, #1
+ 1438              	.LVL104:
+ 1439              		.loc 1 341 11 view .LVU424
+ 1440 0102 A4B2     		uxth	r4, r4
+ 1441              	.LVL105:
+ 1442              		.loc 1 341 11 view .LVU425
+ 1443 0104 F2E7     		b	.L90
+ 1444              	.L83:
+ 342:Core/Src/can-user.c **** 	}
+ 343:Core/Src/can-user.c **** }
+ 1445              		.loc 1 343 1 view .LVU426
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 36
+
+
+ 1446 0106 0AB0     		add	sp, sp, #40
+ 1447              	.LCFI30:
+ 1448              		.cfi_def_cfa_offset 8
+ 1449              		@ sp needed
+ 1450 0108 10BD     		pop	{r4, pc}
+ 1451              	.LVL106:
+ 1452              	.L99:
+ 1453              		.loc 1 343 1 view .LVU427
+ 1454 010a 00BF     		.align	2
+ 1455              	.L98:
+ 1456 010c F4E50618 		.word	403105268
+ 1457 0110 00000000 		.word	.LANCHOR2
+ 1458 0114 00000000 		.word	hcan2
+ 1459              		.cfi_endproc
+ 1460              	.LFE73:
+ 1462              		.global	charge_cur_count
+ 1463              		.section	.bss.charge_cur_count,"aw",%nobits
+ 1464              		.set	.LANCHOR2,. + 0
+ 1467              	charge_cur_count:
+ 1468 0000 00       		.space	1
+ 1469              		.section	.data.temp_threshold.0,"aw"
+ 1470              		.align	2
+ 1471              		.set	.LANCHOR1,. + 0
+ 1474              	temp_threshold.0:
+ 1475 0000 68010000 		.word	E03+360
+ 1476              		.section	.data.threshold_id.1,"aw"
+ 1477              		.align	1
+ 1478              		.set	.LANCHOR0,. + 0
+ 1481              	threshold_id.1:
+ 1482 0000 4001     		.short	320
+ 1483              		.text
+ 1484              	.Letext0:
+ 1485              		.file 2 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\machine\\_default_types.h"
+ 1486              		.file 3 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\sys\\_stdint.h"
+ 1487              		.file 4 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f105xc.h"
+ 1488              		.file 5 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f1xx.h"
+ 1489              		.file 6 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h"
+ 1490              		.file 7 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_can.h"
+ 1491              		.file 8 "Core/Inc/data-user.h"
+ 1492              		.file 9 "Core/Inc/state-user.h"
+ 1493              		.file 10 "Core/Inc/relay-user.h"
+ 1494              		.file 11 "Core/Inc/flash-user.h"
+ 1495              		.file 12 "Core/Inc/main.h"
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s 			page 37
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 can-user.c
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:18     .text.can1_interal_config:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:24     .text.can1_interal_config:00000000 can1_interal_config
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:129    .text.can1_interal_config:00000054 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:135    .text.can2_exteral_config:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:141    .text.can2_exteral_config:00000000 can2_exteral_config
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:249    .text.can2_exteral_config:0000005c $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:254    .text.HAL_CAN_RxFifo1MsgPendingCallback:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:260    .text.HAL_CAN_RxFifo1MsgPendingCallback:00000000 HAL_CAN_RxFifo1MsgPendingCallback
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:379    .text.HAL_CAN_RxFifo1MsgPendingCallback:00000084 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:387    .text.Can_Send_Msg:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:393    .text.Can_Send_Msg:00000000 Can_Send_Msg
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:535    .text.Can_Send_Msg:00000070 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:541    .text.Can_Send_Package:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:547    .text.Can_Send_Package:00000000 Can_Send_Package
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:618    .text.HAL_CAN_RxFifo0MsgPendingCallback:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:624    .text.HAL_CAN_RxFifo0MsgPendingCallback:00000000 HAL_CAN_RxFifo0MsgPendingCallback
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:942    .text.HAL_CAN_RxFifo0MsgPendingCallback:000001a0 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:952    .text.CAN_Transmit:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:958    .text.CAN_Transmit:00000000 CAN_Transmit
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1061   .text.CAN_Transmit:0000004c $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1067   .text.Can_Send_Data:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1073   .text.Can_Send_Data:00000000 Can_Send_Data
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1195   .text.Can_Send_Data:000000d4 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1200   .text.Can_Send_Charge:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1206   .text.Can_Send_Charge:00000000 Can_Send_Charge
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1456   .text.Can_Send_Charge:0000010c $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1467   .bss.charge_cur_count:00000000 charge_cur_count
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1468   .bss.charge_cur_count:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1470   .data.temp_threshold.0:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1474   .data.temp_threshold.0:00000000 temp_threshold.0
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1477   .data.threshold_id.1:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\ccQzHh4V.s:1481   .data.threshold_id.1:00000000 threshold_id.1
+
+UNDEFINED SYMBOLS
+HAL_CAN_ConfigFilter
+HAL_CAN_Start
+HAL_CAN_ActivateNotification
+Error_Handler
+hcan1
+hcan2
+HAL_CAN_GetRxMessage
+Error
+E03
+ChargeMachine_Count
+HAL_CAN_AddTxMessage
+Flash_Write_Init_Flag
+Threshold_Update
+Flash_Write_Errormute
+Flash_SE
+Flash_Write
+Flash_Write_Threshold
+Hall_Count

@@ -1,0 +1,907 @@
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"rtc-user.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.user_CheckRtcBkup,"ax",%progbits
+  18              		.align	1
+  19              		.global	user_CheckRtcBkup
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  24              	user_CheckRtcBkup:
+  25              	.LFB65:
+  26              		.file 1 "Core/Src/rtc-user.c"
+   1:Core/Src/rtc-user.c **** /*
+   2:Core/Src/rtc-user.c ****  * rtc.c
+   3:Core/Src/rtc-user.c ****  *
+   4:Core/Src/rtc-user.c ****  *  Created on: 2022年3月6日
+   5:Core/Src/rtc-user.c ****  *      Author: BBBBB
+   6:Core/Src/rtc-user.c ****  */
+   7:Core/Src/rtc-user.c ****  //逻辑上，一旦监测到下电，把当前时间存储到时间结构体中。同时依据这
+   8:Core/Src/rtc-user.c ****  //1.如果达到十分钟，就进入中断，将标志位
+   9:Core/Src/rtc-user.c ****  
+  10:Core/Src/rtc-user.c **** //  #include "rtc.h"
+  11:Core/Src/rtc-user.c ****  #include "data-user.h"
+  12:Core/Src/rtc-user.c ****  #include "daisy-user.h"
+  13:Core/Src/rtc-user.c ****  #include "main.h"
+  14:Core/Src/rtc-user.c ****  #include "state-user.h"
+  15:Core/Src/rtc-user.c ****  #include "rtc-user.h"
+  16:Core/Src/rtc-user.c ****  #include "flash-user.h"
+  17:Core/Src/rtc-user.c **** 
+  18:Core/Src/rtc-user.c ****  //函数
+  19:Core/Src/rtc-user.c **** 
+  20:Core/Src/rtc-user.c ****  //1.获取时间
+  21:Core/Src/rtc-user.c ****  //2.监测函数
+  22:Core/Src/rtc-user.c ****  //4.SOC初始值函数，依据标志位，赋予初始值
+  23:Core/Src/rtc-user.c ****  //5.SOC计算函数
+  24:Core/Src/rtc-user.c **** 
+  25:Core/Src/rtc-user.c **** extern BMS E03;
+  26:Core/Src/rtc-user.c **** extern float SOC_OCV[11][2];
+  27:Core/Src/rtc-user.c **** 
+  28:Core/Src/rtc-user.c **** 
+  29:Core/Src/rtc-user.c **** u8 offFlag = 0;  //下电标志位，目的是防止重复设定闹钟，这个可能有更好的�
+  30:Core/Src/rtc-user.c **** u8 SOC_Cycle = 10; //计算SOC的间隔，为了方便修改，加一个变量
+  31:Core/Src/rtc-user.c **** TIME time;	//定义存储上下电时间的结构体
+  32:Core/Src/rtc-user.c **** int32_t Accumulate = 0;	//定义SOC计算的累计电流乘以时间的积分
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 2
+
+
+  33:Core/Src/rtc-user.c **** 
+  34:Core/Src/rtc-user.c **** void user_CheckRtcBkup(){
+  27              		.loc 1 34 25 view -0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              	.LCFI0:
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  35:Core/Src/rtc-user.c ****    HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 1); 
+  36              		.loc 1 35 4 view .LVU1
+  37 0002 0122     		movs	r2, #1
+  38 0004 1146     		mov	r1, r2
+  39 0006 0248     		ldr	r0, .L3
+  40 0008 FFF7FEFF 		bl	HAL_RTCEx_BKUPWrite
+  41              	.LVL0:
+  36:Core/Src/rtc-user.c **** }
+  42              		.loc 1 36 1 is_stmt 0 view .LVU2
+  43 000c 08BD     		pop	{r3, pc}
+  44              	.L4:
+  45 000e 00BF     		.align	2
+  46              	.L3:
+  47 0010 00000000 		.word	hrtc
+  48              		.cfi_endproc
+  49              	.LFE65:
+  51              		.section	.text.Get_OFF_Time,"ax",%progbits
+  52              		.align	1
+  53              		.global	Get_OFF_Time
+  54              		.syntax unified
+  55              		.thumb
+  56              		.thumb_func
+  58              	Get_OFF_Time:
+  59              	.LFB66:
+  37:Core/Src/rtc-user.c **** //获取当前下电时间, 并将下电时间和SOC存进FLASH里面
+  38:Core/Src/rtc-user.c **** void Get_OFF_Time( void ) 
+  39:Core/Src/rtc-user.c **** {
+  60              		.loc 1 39 1 is_stmt 1 view -0
+  61              		.cfi_startproc
+  62              		@ args = 0, pretend = 0, frame = 0
+  63              		@ frame_needed = 0, uses_anonymous_args = 0
+  64 0000 38B5     		push	{r3, r4, r5, lr}
+  65              	.LCFI1:
+  66              		.cfi_def_cfa_offset 16
+  67              		.cfi_offset 3, -16
+  68              		.cfi_offset 4, -12
+  69              		.cfi_offset 5, -8
+  70              		.cfi_offset 14, -4
+  40:Core/Src/rtc-user.c ****     HAL_RTC_GetTime(&hrtc, &time.OFF_Time, RTC_FORMAT_BIN);//将时间数据储存在OFF_Time结构
+  71              		.loc 1 40 5 view .LVU4
+  72 0002 084D     		ldr	r5, .L7
+  73 0004 084C     		ldr	r4, .L7+4
+  74 0006 0022     		movs	r2, #0
+  75 0008 2946     		mov	r1, r5
+  76 000a 2046     		mov	r0, r4
+  77 000c FFF7FEFF 		bl	HAL_RTC_GetTime
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 3
+
+
+  78              	.LVL1:
+  41:Core/Src/rtc-user.c ****     HAL_RTC_GetDate(&hrtc,  &time.OFF_Date, RTC_FORMAT_BIN);//日期，没啥用
+  79              		.loc 1 41 5 view .LVU5
+  80 0010 0022     		movs	r2, #0
+  81 0012 E91C     		adds	r1, r5, #3
+  82 0014 2046     		mov	r0, r4
+  83 0016 FFF7FEFF 		bl	HAL_RTC_GetDate
+  84              	.LVL2:
+  42:Core/Src/rtc-user.c **** 	Flash_Write_SOC();	//将SOC进flash	
+  85              		.loc 1 42 2 view .LVU6
+  86 001a FFF7FEFF 		bl	Flash_Write_SOC
+  87              	.LVL3:
+  43:Core/Src/rtc-user.c **** 	Flash_Write_Time();	//将OFFtime存进flash
+  88              		.loc 1 43 2 view .LVU7
+  89 001e FFF7FEFF 		bl	Flash_Write_Time
+  90              	.LVL4:
+  44:Core/Src/rtc-user.c **** }
+  91              		.loc 1 44 1 is_stmt 0 view .LVU8
+  92 0022 38BD     		pop	{r3, r4, r5, pc}
+  93              	.L8:
+  94              		.align	2
+  95              	.L7:
+  96 0024 00000000 		.word	.LANCHOR0
+  97 0028 00000000 		.word	hrtc
+  98              		.cfi_endproc
+  99              	.LFE66:
+ 101              		.section	.text.Get_ON_Time,"ax",%progbits
+ 102              		.align	1
+ 103              		.global	Get_ON_Time
+ 104              		.syntax unified
+ 105              		.thumb
+ 106              		.thumb_func
+ 108              	Get_ON_Time:
+ 109              	.LFB67:
+  45:Core/Src/rtc-user.c **** void Get_ON_Time( void ) //获取上电时间
+  46:Core/Src/rtc-user.c **** {
+ 110              		.loc 1 46 1 is_stmt 1 view -0
+ 111              		.cfi_startproc
+ 112              		@ args = 0, pretend = 0, frame = 0
+ 113              		@ frame_needed = 0, uses_anonymous_args = 0
+ 114 0000 38B5     		push	{r3, r4, r5, lr}
+ 115              	.LCFI2:
+ 116              		.cfi_def_cfa_offset 16
+ 117              		.cfi_offset 3, -16
+ 118              		.cfi_offset 4, -12
+ 119              		.cfi_offset 5, -8
+ 120              		.cfi_offset 14, -4
+  47:Core/Src/rtc-user.c **** 	 HAL_RTC_GetTime(&hrtc, &time.ON_Time, RTC_FORMAT_BIN);
+ 121              		.loc 1 47 3 view .LVU10
+ 122 0002 074D     		ldr	r5, .L11
+ 123 0004 074C     		ldr	r4, .L11+4
+ 124 0006 0022     		movs	r2, #0
+ 125 0008 E91D     		adds	r1, r5, #7
+ 126 000a 2046     		mov	r0, r4
+ 127 000c FFF7FEFF 		bl	HAL_RTC_GetTime
+ 128              	.LVL5:
+  48:Core/Src/rtc-user.c ****      HAL_RTC_GetDate(&hrtc,  &time.ON_Date, RTC_FORMAT_BIN);
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 4
+
+
+ 129              		.loc 1 48 6 view .LVU11
+ 130 0010 0022     		movs	r2, #0
+ 131 0012 05F10A01 		add	r1, r5, #10
+ 132 0016 2046     		mov	r0, r4
+ 133 0018 FFF7FEFF 		bl	HAL_RTC_GetDate
+ 134              	.LVL6:
+  49:Core/Src/rtc-user.c **** }
+ 135              		.loc 1 49 1 is_stmt 0 view .LVU12
+ 136 001c 38BD     		pop	{r3, r4, r5, pc}
+ 137              	.L12:
+ 138 001e 00BF     		.align	2
+ 139              	.L11:
+ 140 0020 00000000 		.word	.LANCHOR0
+ 141 0024 00000000 		.word	hrtc
+ 142              		.cfi_endproc
+ 143              	.LFE67:
+ 145              		.section	.text.CAL_TIME,"ax",%progbits
+ 146              		.align	1
+ 147              		.global	CAL_TIME
+ 148              		.syntax unified
+ 149              		.thumb
+ 150              		.thumb_func
+ 152              	CAL_TIME:
+ 153              	.LFB68:
+  50:Core/Src/rtc-user.c **** 
+  51:Core/Src/rtc-user.c **** 
+  52:Core/Src/rtc-user.c **** void CAL_TIME()//计算下电时间，修改标志位，以计算SOC，因为用存在flash里面�
+  53:Core/Src/rtc-user.c **** {
+ 154              		.loc 1 53 1 is_stmt 1 view -0
+ 155              		.cfi_startproc
+ 156              		@ args = 0, pretend = 0, frame = 0
+ 157              		@ frame_needed = 0, uses_anonymous_args = 0
+ 158              		@ link register save eliminated.
+  54:Core/Src/rtc-user.c **** 
+  55:Core/Src/rtc-user.c **** }
+ 159              		.loc 1 55 1 view .LVU14
+ 160 0000 7047     		bx	lr
+ 161              		.cfi_endproc
+ 162              	.LFE68:
+ 164              		.global	__aeabi_i2f
+ 165              		.global	__aeabi_fcmple
+ 166              		.global	__aeabi_fcmpgt
+ 167              		.global	__aeabi_fsub
+ 168              		.global	__aeabi_fmul
+ 169              		.global	__aeabi_fdiv
+ 170              		.global	__aeabi_f2uiz
+ 171              		.global	__aeabi_fadd
+ 172              		.section	.text.SOC_Init,"ax",%progbits
+ 173              		.align	1
+ 174              		.global	SOC_Init
+ 175              		.syntax unified
+ 176              		.thumb
+ 177              		.thumb_func
+ 179              	SOC_Init:
+ 180              	.LVL7:
+ 181              	.LFB69:
+  56:Core/Src/rtc-user.c **** 
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 5
+
+
+  57:Core/Src/rtc-user.c **** //SOC初始值设定
+  58:Core/Src/rtc-user.c **** //下电超过十分钟，开路电压法测。
+  59:Core/Src/rtc-user.c **** void SOC_Init(u16 minvol)
+  60:Core/Src/rtc-user.c **** {
+ 182              		.loc 1 60 1 view -0
+ 183              		.cfi_startproc
+ 184              		@ args = 0, pretend = 0, frame = 0
+ 185              		@ frame_needed = 0, uses_anonymous_args = 0
+ 186              		.loc 1 60 1 is_stmt 0 view .LVU16
+ 187 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 188              	.LCFI3:
+ 189              		.cfi_def_cfa_offset 32
+ 190              		.cfi_offset 4, -32
+ 191              		.cfi_offset 5, -28
+ 192              		.cfi_offset 6, -24
+ 193              		.cfi_offset 7, -20
+ 194              		.cfi_offset 8, -16
+ 195              		.cfi_offset 9, -12
+ 196              		.cfi_offset 10, -8
+ 197              		.cfi_offset 14, -4
+ 198 0004 0446     		mov	r4, r0
+  61:Core/Src/rtc-user.c **** 	u16 k;//斜率
+ 199              		.loc 1 61 2 is_stmt 1 view .LVU17
+  62:Core/Src/rtc-user.c ****     u16 ON_times;
+ 200              		.loc 1 62 5 view .LVU18
+  63:Core/Src/rtc-user.c ****     u16 OFF_times;
+ 201              		.loc 1 63 5 view .LVU19
+  64:Core/Src/rtc-user.c **** 	u8 AlarmFlag = 0; //设个旗子，下电时间标志位，下电超过十分钟为1；否则为0
+ 202              		.loc 1 64 2 view .LVU20
+ 203              	.LVL8:
+  65:Core/Src/rtc-user.c **** 
+  66:Core/Src/rtc-user.c **** 	Flash_Read_Time();	//先Flash读出time, 包括OFF和ON, 但是ON在下一个函数中被覆盖, �
+ 204              		.loc 1 66 2 view .LVU21
+ 205 0006 FFF7FEFF 		bl	Flash_Read_Time
+ 206              	.LVL9:
+  67:Core/Src/rtc-user.c **** 	Get_ON_Time();		//上电时间获取, 跟OFFtime比较
+ 207              		.loc 1 67 2 view .LVU22
+ 208 000a FFF7FEFF 		bl	Get_ON_Time
+ 209              	.LVL10:
+  68:Core/Src/rtc-user.c **** 
+  69:Core/Src/rtc-user.c **** 	ON_times = time.ON_Time.Hours * 3600 + time.ON_Time.Minutes * 60 + time.ON_Time.Seconds;
+ 210              		.loc 1 69 2 view .LVU23
+ 211              		.loc 1 69 25 is_stmt 0 view .LVU24
+ 212 000e 4449     		ldr	r1, .L28
+ 213 0010 CA79     		ldrb	r2, [r1, #7]	@ zero_extendqisi2
+ 214              		.loc 1 69 53 view .LVU25
+ 215 0012 0B7A     		ldrb	r3, [r1, #8]	@ zero_extendqisi2
+ 216              		.loc 1 69 39 view .LVU26
+ 217 0014 C2EB0212 		rsb	r2, r2, r2, lsl #4
+ 218 0018 C2EB0212 		rsb	r2, r2, r2, lsl #4
+ 219 001c C3EB0313 		rsb	r3, r3, r3, lsl #4
+ 220 0020 9B00     		lsls	r3, r3, #2
+ 221 0022 03EB0213 		add	r3, r3, r2, lsl #4
+ 222 0026 9BB2     		uxth	r3, r3
+ 223              		.loc 1 69 81 view .LVU27
+ 224 0028 4A7A     		ldrb	r2, [r1, #9]	@ zero_extendqisi2
+ 225              		.loc 1 69 11 view .LVU28
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 6
+
+
+ 226 002a 1344     		add	r3, r3, r2
+ 227 002c 9BB2     		uxth	r3, r3
+ 228              	.LVL11:
+  70:Core/Src/rtc-user.c **** 	OFF_times = time.OFF_Time.Hours * 3600 + time.OFF_Time.Minutes * 60 + time.OFF_Time.Seconds;
+ 229              		.loc 1 70 2 is_stmt 1 view .LVU29
+ 230              		.loc 1 70 27 is_stmt 0 view .LVU30
+ 231 002e 0878     		ldrb	r0, [r1]	@ zero_extendqisi2
+ 232              		.loc 1 70 56 view .LVU31
+ 233 0030 4A78     		ldrb	r2, [r1, #1]	@ zero_extendqisi2
+ 234              		.loc 1 70 41 view .LVU32
+ 235 0032 C0EB0010 		rsb	r0, r0, r0, lsl #4
+ 236 0036 C0EB0010 		rsb	r0, r0, r0, lsl #4
+ 237 003a C2EB0212 		rsb	r2, r2, r2, lsl #4
+ 238 003e 9200     		lsls	r2, r2, #2
+ 239 0040 02EB0012 		add	r2, r2, r0, lsl #4
+ 240 0044 92B2     		uxth	r2, r2
+ 241              		.loc 1 70 85 view .LVU33
+ 242 0046 8978     		ldrb	r1, [r1, #2]	@ zero_extendqisi2
+ 243              		.loc 1 70 12 view .LVU34
+ 244 0048 0A44     		add	r2, r2, r1
+ 245 004a 92B2     		uxth	r2, r2
+ 246              	.LVL12:
+  71:Core/Src/rtc-user.c **** 	if (ON_times > OFF_times){
+ 247              		.loc 1 71 2 is_stmt 1 view .LVU35
+ 248              		.loc 1 71 5 is_stmt 0 view .LVU36
+ 249 004c 9342     		cmp	r3, r2
+ 250 004e 03D9     		bls	.L15
+  72:Core/Src/rtc-user.c **** 		if (ON_times - OFF_times >= 600){	//大于10min
+ 251              		.loc 1 72 3 is_stmt 1 view .LVU37
+ 252              		.loc 1 72 16 is_stmt 0 view .LVU38
+ 253 0050 9B1A     		subs	r3, r3, r2
+ 254              	.LVL13:
+ 255              		.loc 1 72 6 view .LVU39
+ 256 0052 B3F5167F 		cmp	r3, #600
+ 257 0056 09DB     		blt	.L27
+ 258              	.L15:
+ 259              	.LVL14:
+  73:Core/Src/rtc-user.c **** 			AlarmFlag = 1;
+  74:Core/Src/rtc-user.c **** 		}
+  75:Core/Src/rtc-user.c **** 		else{
+  76:Core/Src/rtc-user.c **** 			AlarmFlag = 0;
+  77:Core/Src/rtc-user.c **** 		}
+  78:Core/Src/rtc-user.c **** 	}
+  79:Core/Src/rtc-user.c **** 	else{
+  80:Core/Src/rtc-user.c **** 		AlarmFlag = 1; //如果上电时间小于下电时间，那么说明至少过去了一天
+  81:Core/Src/rtc-user.c **** 	}
+  82:Core/Src/rtc-user.c **** 	if (AlarmFlag == 1) //如果下电超过十分钟，使用开路电压法,拟合的效果并不好
+  83:Core/Src/rtc-user.c **** 	{
+  84:Core/Src/rtc-user.c **** 		if(minvol > 4334)		E03.State.SOC = 1000;
+ 260              		.loc 1 84 3 is_stmt 1 view .LVU40
+ 261              		.loc 1 84 5 is_stmt 0 view .LVU41
+ 262 0058 41F2EE03 		movw	r3, #4334
+ 263 005c 9C42     		cmp	r4, r3
+ 264 005e 08D9     		bls	.L17
+ 265              		.loc 1 84 22 is_stmt 1 discriminator 1 view .LVU42
+ 266              		.loc 1 84 36 is_stmt 0 discriminator 1 view .LVU43
+ 267 0060 304B     		ldr	r3, .L28+4
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 7
+
+
+ 268 0062 4FF47A72 		mov	r2, #1000
+ 269              	.LVL15:
+ 270              		.loc 1 84 36 discriminator 1 view .LVU44
+ 271 0066 5A81     		strh	r2, [r3, #10]	@ movhi
+ 272              	.LVL16:
+ 273              	.L14:
+  85:Core/Src/rtc-user.c **** 		else if(minvol <= 3050)   E03.State.SOC = 0;//超出数组两端极值
+  86:Core/Src/rtc-user.c **** 		else //中间部分插值线性计算
+  87:Core/Src/rtc-user.c **** 		{
+  88:Core/Src/rtc-user.c **** 			for(u8 n = 0;  n < 10 ; n++ )//循环判断，找到当前开路电压存在的区间
+  89:Core/Src/rtc-user.c **** 			{
+  90:Core/Src/rtc-user.c **** 				if(minvol <= SOC_OCV[n][1] && minvol > SOC_OCV[n + 1][1])
+  91:Core/Src/rtc-user.c **** 				{
+  92:Core/Src/rtc-user.c **** 					k =  1000 * (SOC_OCV[n][0] - SOC_OCV[n+1][0]) / (SOC_OCV[n][1] - SOC_OCV[n+1][1]);//乘了个1
+  93:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+  94:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+  95:Core/Src/rtc-user.c **** 				}
+  96:Core/Src/rtc-user.c **** 			}
+  97:Core/Src/rtc-user.c **** 		}
+  98:Core/Src/rtc-user.c **** 	}
+  99:Core/Src/rtc-user.c **** 	else //如果下电不超过十分钟，依旧保持原来的值
+ 100:Core/Src/rtc-user.c **** 	{
+ 101:Core/Src/rtc-user.c **** 		Flash_Read_SOC();
+ 102:Core/Src/rtc-user.c **** 	}
+ 103:Core/Src/rtc-user.c **** }
+ 274              		.loc 1 103 1 view .LVU45
+ 275 0068 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 276              	.LVL17:
+ 277              	.L27:
+  76:Core/Src/rtc-user.c **** 		}
+ 278              		.loc 1 76 4 is_stmt 1 view .LVU46
+  82:Core/Src/rtc-user.c **** 	{
+ 279              		.loc 1 82 2 view .LVU47
+ 101:Core/Src/rtc-user.c **** 	}
+ 280              		.loc 1 101 3 view .LVU48
+ 281 006c FFF7FEFF 		bl	Flash_Read_SOC
+ 282              	.LVL18:
+ 101:Core/Src/rtc-user.c **** 	}
+ 283              		.loc 1 101 3 is_stmt 0 view .LVU49
+ 284 0070 FAE7     		b	.L14
+ 285              	.LVL19:
+ 286              	.L17:
+  85:Core/Src/rtc-user.c **** 		else //中间部分插值线性计算
+ 287              		.loc 1 85 8 is_stmt 1 view .LVU50
+  85:Core/Src/rtc-user.c **** 		else //中间部分插值线性计算
+ 288              		.loc 1 85 10 is_stmt 0 view .LVU51
+ 289 0072 40F6EA33 		movw	r3, #3050
+ 290 0076 9C42     		cmp	r4, r3
+ 291 0078 50D8     		bhi	.L23
+  85:Core/Src/rtc-user.c **** 		else //中间部分插值线性计算
+ 292              		.loc 1 85 29 is_stmt 1 discriminator 1 view .LVU52
+  85:Core/Src/rtc-user.c **** 		else //中间部分插值线性计算
+ 293              		.loc 1 85 43 is_stmt 0 discriminator 1 view .LVU53
+ 294 007a 2A4B     		ldr	r3, .L28+4
+ 295 007c 0022     		movs	r2, #0
+ 296              	.LVL20:
+  85:Core/Src/rtc-user.c **** 		else //中间部分插值线性计算
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 8
+
+
+ 297              		.loc 1 85 43 discriminator 1 view .LVU54
+ 298 007e 5A81     		strh	r2, [r3, #10]	@ movhi
+ 299 0080 F2E7     		b	.L14
+ 300              	.LVL21:
+ 301              	.L19:
+ 302              	.LBB2:
+  88:Core/Src/rtc-user.c **** 			{
+ 303              		.loc 1 88 29 is_stmt 1 discriminator 2 view .LVU55
+ 304 0082 0135     		adds	r5, r5, #1
+ 305              	.LVL22:
+  88:Core/Src/rtc-user.c **** 			{
+ 306              		.loc 1 88 29 is_stmt 0 discriminator 2 view .LVU56
+ 307 0084 EDB2     		uxtb	r5, r5
+ 308              	.LVL23:
+ 309              	.L18:
+  88:Core/Src/rtc-user.c **** 			{
+ 310              		.loc 1 88 21 is_stmt 1 discriminator 1 view .LVU57
+ 311 0086 092D     		cmp	r5, #9
+ 312 0088 EED8     		bhi	.L14
+  90:Core/Src/rtc-user.c **** 				{
+ 313              		.loc 1 90 5 view .LVU58
+  90:Core/Src/rtc-user.c **** 				{
+ 314              		.loc 1 90 15 is_stmt 0 view .LVU59
+ 315 008a 2046     		mov	r0, r4
+ 316 008c FFF7FEFF 		bl	__aeabi_i2f
+ 317              	.LVL24:
+ 318 0090 0746     		mov	r7, r0
+  90:Core/Src/rtc-user.c **** 				{
+ 319              		.loc 1 90 28 view .LVU60
+ 320 0092 254B     		ldr	r3, .L28+8
+ 321 0094 03EBC503 		add	r3, r3, r5, lsl #3
+ 322 0098 5E68     		ldr	r6, [r3, #4]	@ float
+  90:Core/Src/rtc-user.c **** 				{
+ 323              		.loc 1 90 7 view .LVU61
+ 324 009a 3146     		mov	r1, r6
+ 325 009c FFF7FEFF 		bl	__aeabi_fcmple
+ 326              	.LVL25:
+ 327 00a0 0028     		cmp	r0, #0
+ 328 00a2 EED0     		beq	.L19
+  90:Core/Src/rtc-user.c **** 				{
+ 329              		.loc 1 90 54 discriminator 1 view .LVU62
+ 330 00a4 05F10109 		add	r9, r5, #1
+  90:Core/Src/rtc-user.c **** 				{
+ 331              		.loc 1 90 58 discriminator 1 view .LVU63
+ 332 00a8 1F4B     		ldr	r3, .L28+8
+ 333 00aa 03EBC903 		add	r3, r3, r9, lsl #3
+ 334 00ae D3F804A0 		ldr	r10, [r3, #4]	@ float
+  90:Core/Src/rtc-user.c **** 				{
+ 335              		.loc 1 90 32 discriminator 1 view .LVU64
+ 336 00b2 5146     		mov	r1, r10
+ 337 00b4 3846     		mov	r0, r7
+ 338 00b6 FFF7FEFF 		bl	__aeabi_fcmpgt
+ 339              	.LVL26:
+ 340 00ba 0028     		cmp	r0, #0
+ 341 00bc E1D0     		beq	.L19
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 342              		.loc 1 92 6 is_stmt 1 view .LVU65
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 9
+
+
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 343              		.loc 1 92 29 is_stmt 0 view .LVU66
+ 344 00be 1A4B     		ldr	r3, .L28+8
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 345              		.loc 1 92 47 view .LVU67
+ 346 00c0 53F83970 		ldr	r7, [r3, r9, lsl #3]	@ float
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 347              		.loc 1 92 33 view .LVU68
+ 348 00c4 3946     		mov	r1, r7
+ 349 00c6 53F83500 		ldr	r0, [r3, r5, lsl #3]	@ float
+ 350 00ca FFF7FEFF 		bl	__aeabi_fsub
+ 351              	.LVL27:
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 352              		.loc 1 92 16 view .LVU69
+ 353 00ce 1749     		ldr	r1, .L28+12
+ 354 00d0 FFF7FEFF 		bl	__aeabi_fmul
+ 355              	.LVL28:
+ 356 00d4 0446     		mov	r4, r0
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 357              		.loc 1 92 69 view .LVU70
+ 358 00d6 5146     		mov	r1, r10
+ 359 00d8 3046     		mov	r0, r6
+ 360 00da FFF7FEFF 		bl	__aeabi_fsub
+ 361              	.LVL29:
+ 362 00de 0146     		mov	r1, r0
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 363              		.loc 1 92 52 view .LVU71
+ 364 00e0 2046     		mov	r0, r4
+ 365 00e2 FFF7FEFF 		bl	__aeabi_fdiv
+ 366              	.LVL30:
+  92:Core/Src/rtc-user.c **** 					E03.State.SOC = (1000 * SOC_OCV[n+1][0] + k * SOC_OCV[n+1][1]) / 1000;
+ 367              		.loc 1 92 8 view .LVU72
+ 368 00e6 FFF7FEFF 		bl	__aeabi_f2uiz
+ 369              	.LVL31:
+ 370 00ea 85B2     		uxth	r5, r0
+ 371              	.LVL32:
+  93:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+ 372              		.loc 1 93 6 is_stmt 1 view .LVU73
+  93:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+ 373              		.loc 1 93 28 is_stmt 0 view .LVU74
+ 374 00ec 0F49     		ldr	r1, .L28+12
+ 375 00ee 3846     		mov	r0, r7
+ 376 00f0 FFF7FEFF 		bl	__aeabi_fmul
+ 377              	.LVL33:
+ 378 00f4 0446     		mov	r4, r0
+  93:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+ 379              		.loc 1 93 50 view .LVU75
+ 380 00f6 2846     		mov	r0, r5
+ 381 00f8 FFF7FEFF 		bl	__aeabi_i2f
+ 382              	.LVL34:
+ 383 00fc 5146     		mov	r1, r10
+ 384 00fe FFF7FEFF 		bl	__aeabi_fmul
+ 385              	.LVL35:
+ 386 0102 0146     		mov	r1, r0
+  93:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+ 387              		.loc 1 93 46 view .LVU76
+ 388 0104 2046     		mov	r0, r4
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 10
+
+
+ 389 0106 FFF7FEFF 		bl	__aeabi_fadd
+ 390              	.LVL36:
+  93:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+ 391              		.loc 1 93 69 view .LVU77
+ 392 010a 0849     		ldr	r1, .L28+12
+ 393 010c FFF7FEFF 		bl	__aeabi_fdiv
+ 394              	.LVL37:
+  93:Core/Src/rtc-user.c **** 					return;	//找到了SOC并赋值之后调出函数
+ 395              		.loc 1 93 20 view .LVU78
+ 396 0110 FFF7FEFF 		bl	__aeabi_f2uiz
+ 397              	.LVL38:
+ 398 0114 80B2     		uxth	r0, r0
+ 399 0116 034B     		ldr	r3, .L28+4
+ 400 0118 5881     		strh	r0, [r3, #10]	@ movhi
+  94:Core/Src/rtc-user.c **** 				}
+ 401              		.loc 1 94 6 is_stmt 1 view .LVU79
+ 402 011a A5E7     		b	.L14
+ 403              	.LVL39:
+ 404              	.L23:
+  88:Core/Src/rtc-user.c **** 			{
+ 405              		.loc 1 88 11 is_stmt 0 view .LVU80
+ 406 011c 0025     		movs	r5, #0
+ 407 011e B2E7     		b	.L18
+ 408              	.L29:
+ 409              		.align	2
+ 410              	.L28:
+ 411 0120 00000000 		.word	.LANCHOR0
+ 412 0124 00000000 		.word	E03
+ 413 0128 00000000 		.word	.LANCHOR1
+ 414 012c 00007A44 		.word	1148846080
+ 415              	.LBE2:
+ 416              		.cfi_endproc
+ 417              	.LFE69:
+ 419              		.section	.text.Save_OFFtime,"ax",%progbits
+ 420              		.align	1
+ 421              		.global	Save_OFFtime
+ 422              		.syntax unified
+ 423              		.thumb
+ 424              		.thumb_func
+ 426              	Save_OFFtime:
+ 427              	.LFB70:
+ 104:Core/Src/rtc-user.c **** 
+ 105:Core/Src/rtc-user.c **** 
+ 106:Core/Src/rtc-user.c **** 
+ 107:Core/Src/rtc-user.c **** //检测函数，这部分应该可以融合进对应的BMS状态的几个函数中
+ 108:Core/Src/rtc-user.c **** void Save_OFFtime()
+ 109:Core/Src/rtc-user.c **** {
+ 428              		.loc 1 109 1 is_stmt 1 view -0
+ 429              		.cfi_startproc
+ 430              		@ args = 0, pretend = 0, frame = 0
+ 431              		@ frame_needed = 0, uses_anonymous_args = 0
+ 432 0000 08B5     		push	{r3, lr}
+ 433              	.LCFI4:
+ 434              		.cfi_def_cfa_offset 8
+ 435              		.cfi_offset 3, -8
+ 436              		.cfi_offset 14, -4
+ 110:Core/Src/rtc-user.c **** 	  switch(E03.State.BMS_State)
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 11
+
+
+ 437              		.loc 1 110 4 view .LVU82
+ 438              		.loc 1 110 20 is_stmt 0 view .LVU83
+ 439 0002 0D4B     		ldr	r3, .L36
+ 440 0004 9B7B     		ldrb	r3, [r3, #14]	@ zero_extendqisi2
+ 441 0006 DBB2     		uxtb	r3, r3
+ 442              		.loc 1 110 4 view .LVU84
+ 443 0008 072B     		cmp	r3, #7
+ 444 000a 0AD0     		beq	.L31
+ 445 000c 092B     		cmp	r3, #9
+ 446 000e 05D0     		beq	.L32
+ 447 0010 062B     		cmp	r3, #6
+ 448 0012 00D0     		beq	.L35
+ 449              	.L30:
+ 111:Core/Src/rtc-user.c **** 	 {
+ 112:Core/Src/rtc-user.c **** 		case BMS_SDC_OFF:	Get_OFF_Time();	break;
+ 113:Core/Src/rtc-user.c **** 		case BMS_CHARGEDONE: Get_OFF_Time();break;
+ 114:Core/Src/rtc-user.c **** 		case BMS_ERROR:
+ 115:Core/Src/rtc-user.c **** 			if (offFlag == 0){
+ 116:Core/Src/rtc-user.c **** 				Get_OFF_Time();
+ 117:Core/Src/rtc-user.c **** 				offFlag = 1;
+ 118:Core/Src/rtc-user.c **** 			}
+ 119:Core/Src/rtc-user.c **** 			break;
+ 120:Core/Src/rtc-user.c **** 	  }
+ 121:Core/Src/rtc-user.c **** }
+ 450              		.loc 1 121 1 view .LVU85
+ 451 0014 08BD     		pop	{r3, pc}
+ 452              	.L35:
+ 112:Core/Src/rtc-user.c **** 		case BMS_CHARGEDONE: Get_OFF_Time();break;
+ 453              		.loc 1 112 21 is_stmt 1 view .LVU86
+ 454 0016 FFF7FEFF 		bl	Get_OFF_Time
+ 455              	.LVL40:
+ 112:Core/Src/rtc-user.c **** 		case BMS_CHARGEDONE: Get_OFF_Time();break;
+ 456              		.loc 1 112 37 view .LVU87
+ 457 001a FBE7     		b	.L30
+ 458              	.L32:
+ 113:Core/Src/rtc-user.c **** 		case BMS_ERROR:
+ 459              		.loc 1 113 24 view .LVU88
+ 460 001c FFF7FEFF 		bl	Get_OFF_Time
+ 461              	.LVL41:
+ 113:Core/Src/rtc-user.c **** 		case BMS_ERROR:
+ 462              		.loc 1 113 39 view .LVU89
+ 463 0020 F8E7     		b	.L30
+ 464              	.L31:
+ 115:Core/Src/rtc-user.c **** 				Get_OFF_Time();
+ 465              		.loc 1 115 4 view .LVU90
+ 115:Core/Src/rtc-user.c **** 				Get_OFF_Time();
+ 466              		.loc 1 115 16 is_stmt 0 view .LVU91
+ 467 0022 064B     		ldr	r3, .L36+4
+ 468 0024 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 115:Core/Src/rtc-user.c **** 				Get_OFF_Time();
+ 469              		.loc 1 115 7 view .LVU92
+ 470 0026 002B     		cmp	r3, #0
+ 471 0028 F4D1     		bne	.L30
+ 116:Core/Src/rtc-user.c **** 				offFlag = 1;
+ 472              		.loc 1 116 5 is_stmt 1 view .LVU93
+ 473 002a FFF7FEFF 		bl	Get_OFF_Time
+ 474              	.LVL42:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 12
+
+
+ 117:Core/Src/rtc-user.c **** 			}
+ 475              		.loc 1 117 5 view .LVU94
+ 117:Core/Src/rtc-user.c **** 			}
+ 476              		.loc 1 117 13 is_stmt 0 view .LVU95
+ 477 002e 034B     		ldr	r3, .L36+4
+ 478 0030 0122     		movs	r2, #1
+ 479 0032 1A70     		strb	r2, [r3]
+ 480              		.loc 1 121 1 view .LVU96
+ 481 0034 EEE7     		b	.L30
+ 482              	.L37:
+ 483 0036 00BF     		.align	2
+ 484              	.L36:
+ 485 0038 00000000 		.word	E03
+ 486 003c 00000000 		.word	.LANCHOR2
+ 487              		.cfi_endproc
+ 488              	.LFE70:
+ 490              		.section	.text.SOC_CAL,"ax",%progbits
+ 491              		.align	1
+ 492              		.global	SOC_CAL
+ 493              		.syntax unified
+ 494              		.thumb
+ 495              		.thumb_func
+ 497              	SOC_CAL:
+ 498              	.LFB71:
+ 122:Core/Src/rtc-user.c **** 
+ 123:Core/Src/rtc-user.c **** 
+ 124:Core/Src/rtc-user.c **** 
+ 125:Core/Src/rtc-user.c **** //SOC计算程序
+ 126:Core/Src/rtc-user.c **** //计算soc 事实上应该还有一个效率的，本来打算按朱队的数据算一下，但是
+ 127:Core/Src/rtc-user.c **** //然后，安时积分法，积分就算了，就是时间乘以电流，目前是定时器10ms，
+ 128:Core/Src/rtc-user.c **** //电流值，目前认为正值为放电，所以中间是个加号，错了再改
+ 129:Core/Src/rtc-user.c **** void SOC_CAL()
+ 130:Core/Src/rtc-user.c **** {
+ 499              		.loc 1 130 1 is_stmt 1 view -0
+ 500              		.cfi_startproc
+ 501              		@ args = 0, pretend = 0, frame = 0
+ 502              		@ frame_needed = 0, uses_anonymous_args = 0
+ 503              		@ link register save eliminated.
+ 131:Core/Src/rtc-user.c **** 	//	E03.State.SOC = E03.State.SOC - E03.State.TotalCurrent * SOC_Cycle / (22*60*60*1000);	//这是�
+ 132:Core/Src/rtc-user.c **** 	//代码讲解: 因为用整数运算快,但是怕丢失精度(比如900/1000实际上等于0), �
+ 133:Core/Src/rtc-user.c **** 	//采用10ms为Δt, 根据电流累加算积分: 其实可以根据这条公式理解E03.State.SOC
+ 134:Core/Src/rtc-user.c **** 	//当SOC变化1时, 需要E03.State.TotalCurrent * SOC_Cycle==(16.8*60*60*1000), 也就是79200000
+ 135:Core/Src/rtc-user.c **** 	Accumulate += (E03.State.TotalCurrent * SOC_Cycle);
+ 504              		.loc 1 135 2 view .LVU98
+ 505              		.loc 1 135 26 is_stmt 0 view .LVU99
+ 506 0000 124B     		ldr	r3, .L41
+ 507 0002 1868     		ldr	r0, [r3]
+ 508              		.loc 1 135 40 view .LVU100
+ 509 0004 124B     		ldr	r3, .L41+4
+ 510 0006 1978     		ldrb	r1, [r3]	@ zero_extendqisi2
+ 511              		.loc 1 135 13 view .LVU101
+ 512 0008 124A     		ldr	r2, .L41+8
+ 513 000a 1368     		ldr	r3, [r2]
+ 514 000c 00FB0133 		mla	r3, r0, r1, r3
+ 515 0010 1360     		str	r3, [r2]
+ 136:Core/Src/rtc-user.c **** 	if(Accumulate>60480000){
+ 516              		.loc 1 136 2 is_stmt 1 view .LVU102
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 13
+
+
+ 517              		.loc 1 136 4 is_stmt 0 view .LVU103
+ 518 0012 114A     		ldr	r2, .L41+12
+ 519 0014 9342     		cmp	r3, r2
+ 520 0016 0ADD     		ble	.L39
+ 137:Core/Src/rtc-user.c **** 		Accumulate = Accumulate - 60480000;	//SOC已经要变化了, 积分值保留一下, 如果直接�
+ 521              		.loc 1 137 3 is_stmt 1 view .LVU104
+ 522              		.loc 1 137 27 is_stmt 0 view .LVU105
+ 523 0018 104A     		ldr	r2, .L41+16
+ 524 001a 1A44     		add	r2, r2, r3
+ 525              		.loc 1 137 14 view .LVU106
+ 526 001c 0D4B     		ldr	r3, .L41+8
+ 527 001e 1A60     		str	r2, [r3]
+ 138:Core/Src/rtc-user.c **** 		E03.State.SOC-=1;	//放电了千分之一, SOC自减1
+ 528              		.loc 1 138 3 is_stmt 1 view .LVU107
+ 529              		.loc 1 138 16 is_stmt 0 view .LVU108
+ 530 0020 0A4A     		ldr	r2, .L41
+ 531 0022 5389     		ldrh	r3, [r2, #10]
+ 532 0024 9BB2     		uxth	r3, r3
+ 533 0026 013B     		subs	r3, r3, #1
+ 534 0028 9BB2     		uxth	r3, r3
+ 535 002a 5381     		strh	r3, [r2, #10]	@ movhi
+ 536 002c 7047     		bx	lr
+ 537              	.L39:
+ 139:Core/Src/rtc-user.c **** 	}
+ 140:Core/Src/rtc-user.c **** 	else if(Accumulate<(-60480000)){
+ 538              		.loc 1 140 7 is_stmt 1 view .LVU109
+ 539              		.loc 1 140 9 is_stmt 0 view .LVU110
+ 540 002e 0B4A     		ldr	r2, .L41+16
+ 541 0030 9342     		cmp	r3, r2
+ 542 0032 09DA     		bge	.L38
+ 141:Core/Src/rtc-user.c **** 		Accumulate = Accumulate + 60480000;
+ 543              		.loc 1 141 3 is_stmt 1 view .LVU111
+ 544              		.loc 1 141 27 is_stmt 0 view .LVU112
+ 545 0034 084A     		ldr	r2, .L41+12
+ 546 0036 1A44     		add	r2, r2, r3
+ 547              		.loc 1 141 14 view .LVU113
+ 548 0038 064B     		ldr	r3, .L41+8
+ 549 003a 1A60     		str	r2, [r3]
+ 142:Core/Src/rtc-user.c **** 		E03.State.SOC+=1;	//充电了千分之一, SOC自增1
+ 550              		.loc 1 142 3 is_stmt 1 view .LVU114
+ 551              		.loc 1 142 16 is_stmt 0 view .LVU115
+ 552 003c 034A     		ldr	r2, .L41
+ 553 003e 5389     		ldrh	r3, [r2, #10]
+ 554 0040 9BB2     		uxth	r3, r3
+ 555 0042 0133     		adds	r3, r3, #1
+ 556 0044 9BB2     		uxth	r3, r3
+ 557 0046 5381     		strh	r3, [r2, #10]	@ movhi
+ 558              	.L38:
+ 143:Core/Src/rtc-user.c **** 	}
+ 144:Core/Src/rtc-user.c **** }
+ 559              		.loc 1 144 1 view .LVU116
+ 560 0048 7047     		bx	lr
+ 561              	.L42:
+ 562 004a 00BF     		.align	2
+ 563              	.L41:
+ 564 004c 00000000 		.word	E03
+ 565 0050 00000000 		.word	.LANCHOR3
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 14
+
+
+ 566 0054 00000000 		.word	.LANCHOR4
+ 567 0058 00DA9A03 		.word	60480000
+ 568 005c 002665FC 		.word	-60480000
+ 569              		.cfi_endproc
+ 570              	.LFE71:
+ 572              		.global	SOC_OCV
+ 573              		.global	Accumulate
+ 574              		.global	time
+ 575              		.global	SOC_Cycle
+ 576              		.global	offFlag
+ 577              		.section	.bss.Accumulate,"aw",%nobits
+ 578              		.align	2
+ 579              		.set	.LANCHOR4,. + 0
+ 582              	Accumulate:
+ 583 0000 00000000 		.space	4
+ 584              		.section	.bss.offFlag,"aw",%nobits
+ 585              		.set	.LANCHOR2,. + 0
+ 588              	offFlag:
+ 589 0000 00       		.space	1
+ 590              		.section	.bss.time,"aw",%nobits
+ 591              		.align	2
+ 592              		.set	.LANCHOR0,. + 0
+ 595              	time:
+ 596 0000 00000000 		.space	14
+ 596      00000000 
+ 596      00000000 
+ 596      0000
+ 597              		.section	.data.SOC_Cycle,"aw"
+ 598              		.set	.LANCHOR3,. + 0
+ 601              	SOC_Cycle:
+ 602 0000 0A       		.byte	10
+ 603              		.section	.data.SOC_OCV,"aw"
+ 604              		.align	2
+ 605              		.set	.LANCHOR1,. + 0
+ 608              	SOC_OCV:
+ 609 0000 00007A44 		.word	1148846080
+ 610 0004 00708745 		.word	1166503936
+ 611 0008 00006144 		.word	1147207680
+ 612 000c 00D88345 		.word	1166268416
+ 613 0010 00004844 		.word	1145569280
+ 614 0014 00388045 		.word	1166030848
+ 615 0018 00002F44 		.word	1143930880
+ 616 001c 00207A45 		.word	1165631488
+ 617 0020 00001644 		.word	1142292480
+ 618 0024 00207445 		.word	1165238272
+ 619 0028 0000FA43 		.word	1140457472
+ 620 002c 00806F45 		.word	1164935168
+ 621 0030 0000C843 		.word	1137180672
+ 622 0034 00D06C45 		.word	1164759040
+ 623 0038 00009643 		.word	1133903872
+ 624 003c 00106B45 		.word	1164644352
+ 625 0040 00004843 		.word	1128792064
+ 626 0044 00506845 		.word	1164464128
+ 627 0048 0000C842 		.word	1120403456
+ 628 004c 00D06545 		.word	1164300288
+ 629 0050 00000000 		.word	0
+ 630 0054 00A03E45 		.word	1161732096
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 15
+
+
+ 631              		.text
+ 632              	.Letext0:
+ 633              		.file 2 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\machine\\_default_types.h"
+ 634              		.file 3 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\sys\\_stdint.h"
+ 635              		.file 4 "Core/Inc/data-user.h"
+ 636              		.file 5 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f105xc.h"
+ 637              		.file 6 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h"
+ 638              		.file 7 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rtc.h"
+ 639              		.file 8 "Core/Inc/rtc-user.h"
+ 640              		.file 9 "Core/Inc/flash-user.h"
+ 641              		.file 10 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rtc_ex.h"
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s 			page 16
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 rtc-user.c
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:18     .text.user_CheckRtcBkup:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:24     .text.user_CheckRtcBkup:00000000 user_CheckRtcBkup
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:47     .text.user_CheckRtcBkup:00000010 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:52     .text.Get_OFF_Time:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:58     .text.Get_OFF_Time:00000000 Get_OFF_Time
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:96     .text.Get_OFF_Time:00000024 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:102    .text.Get_ON_Time:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:108    .text.Get_ON_Time:00000000 Get_ON_Time
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:140    .text.Get_ON_Time:00000020 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:146    .text.CAL_TIME:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:152    .text.CAL_TIME:00000000 CAL_TIME
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:173    .text.SOC_Init:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:179    .text.SOC_Init:00000000 SOC_Init
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:411    .text.SOC_Init:00000120 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:420    .text.Save_OFFtime:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:426    .text.Save_OFFtime:00000000 Save_OFFtime
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:485    .text.Save_OFFtime:00000038 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:491    .text.SOC_CAL:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:497    .text.SOC_CAL:00000000 SOC_CAL
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:564    .text.SOC_CAL:0000004c $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:608    .data.SOC_OCV:00000000 SOC_OCV
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:582    .bss.Accumulate:00000000 Accumulate
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:595    .bss.time:00000000 time
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:601    .data.SOC_Cycle:00000000 SOC_Cycle
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:588    .bss.offFlag:00000000 offFlag
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:578    .bss.Accumulate:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:589    .bss.offFlag:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:591    .bss.time:00000000 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc7frsfT.s:604    .data.SOC_OCV:00000000 $d
+
+UNDEFINED SYMBOLS
+HAL_RTCEx_BKUPWrite
+hrtc
+HAL_RTC_GetTime
+HAL_RTC_GetDate
+Flash_Write_SOC
+Flash_Write_Time
+__aeabi_i2f
+__aeabi_fcmple
+__aeabi_fcmpgt
+__aeabi_fsub
+__aeabi_fmul
+__aeabi_fdiv
+__aeabi_f2uiz
+__aeabi_fadd
+Flash_Read_Time
+Flash_Read_SOC
+E03

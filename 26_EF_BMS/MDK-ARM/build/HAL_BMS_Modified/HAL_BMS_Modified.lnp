@@ -1,0 +1,38 @@
+--cpu Cortex-M3 --library_type=microlib --scatter "c:/Users/ride_pig/Desktop/HAL_BMS_2023_Test_E_RUN_SendTemperature/MDK-ARM/build/HAL_BMS_Modified/HAL_BMS_Modified.sct" --strict --summary_stderr --info summarysizes --map --xref --callgraph --symbols --info sizes --info totals --info unused --info veneers
+--list .\build\HAL_BMS_Modified\HAL_BMS_Modified.map
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\adc-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\adc.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\can-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\can.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\daisy-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\data-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\flash-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\gpio.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\ltc681x-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\main.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\os-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\relay-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\spi.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\state-user.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\stm32f1xx_hal_msp.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\stm32f1xx_it.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\system_stm32f1xx.o
+.\build\HAL_BMS_Modified\.obj\__\Core\Src\tim.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_adc.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_adc_ex.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_can.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_cortex.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_dma.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_exti.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_flash.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_flash_ex.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_gpio.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_gpio_ex.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_pwr.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_rcc.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_rcc_ex.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_spi.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_tim.o
+.\build\HAL_BMS_Modified\.obj\__\Drivers\STM32F1xx_HAL_Driver\Src\stm32f1xx_hal_tim_ex.o
+.\build\HAL_BMS_Modified\.obj\startup_stm32f105xc.o -o .\build\HAL_BMS_Modified\HAL_BMS_Modified.axf

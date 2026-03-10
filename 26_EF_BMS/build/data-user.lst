@@ -1,0 +1,583 @@
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"data-user.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.Data_Init,"ax",%progbits
+  18              		.align	1
+  19              		.global	Data_Init
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  24              	Data_Init:
+  25              	.LFB65:
+  26              		.file 1 "Core/Src/data-user.c"
+   1:Core/Src/data-user.c **** /*
+   2:Core/Src/data-user.c ****  * data.c
+   3:Core/Src/data-user.c ****  *
+   4:Core/Src/data-user.c ****  *  Created on: Mar 9, 2022
+   5:Core/Src/data-user.c ****  *      Author: BBBBB
+   6:Core/Src/data-user.c ****  */
+   7:Core/Src/data-user.c **** 
+   8:Core/Src/data-user.c **** #include "adc-user.h"
+   9:Core/Src/data-user.c **** #include "can-user.h"
+  10:Core/Src/data-user.c **** #include "data-user.h"
+  11:Core/Src/data-user.c **** #include "state-user.h"
+  12:Core/Src/data-user.c **** #include "ltc681x-user.h"
+  13:Core/Src/data-user.c **** #include "daisy-user.h"
+  14:Core/Src/data-user.c **** #include "flash-user.h"
+  15:Core/Src/data-user.c **** #include "rtc-user.h"
+  16:Core/Src/data-user.c **** #include "main.h"
+  17:Core/Src/data-user.c **** 
+  18:Core/Src/data-user.c **** extern BMS E03;
+  19:Core/Src/data-user.c **** extern cell_asic IC[Total_ic];
+  20:Core/Src/data-user.c **** extern MODULE Module[Total_ic];
+  21:Core/Src/data-user.c **** extern u8 n_Cell[Total_ic];
+  22:Core/Src/data-user.c **** extern CAN_HandleTypeDef hcan1;
+  23:Core/Src/data-user.c **** extern CAN_HandleTypeDef hcan2;
+  24:Core/Src/data-user.c **** 
+  25:Core/Src/data-user.c **** void Data_Init()
+  26:Core/Src/data-user.c **** {
+  27              		.loc 1 26 1 view -0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 10B5     		push	{r4, lr}
+  32              	.LCFI0:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 2
+
+
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 4, -8
+  35              		.cfi_offset 14, -4
+  27:Core/Src/data-user.c **** 	/*采集板相关的初始化*/
+  28:Core/Src/data-user.c **** 	init_PEC15_Table();							/*必用, 从控板PEC计算相关参数初始化*/
+  36              		.loc 1 28 2 view .LVU1
+  37 0002 FFF7FEFF 		bl	init_PEC15_Table
+  38              	.LVL0:
+  29:Core/Src/data-user.c **** 	Module_Init(Module, Total_ic);				/*MODULE数组的初始化*/
+  39              		.loc 1 29 2 view .LVU2
+  40 0006 0621     		movs	r1, #6
+  41 0008 6348     		ldr	r0, .L25
+  42 000a FFF7FEFF 		bl	Module_Init
+  43              	.LVL1:
+  30:Core/Src/data-user.c **** 	
+  31:Core/Src/data-user.c **** 	for(u8 nic=0; nic < Total_ic; nic++){		//定义好采集的数量
+  44              		.loc 1 31 2 view .LVU3
+  45              	.LBB2:
+  46              		.loc 1 31 6 view .LVU4
+  47              		.loc 1 31 9 is_stmt 0 view .LVU5
+  48 000e 0023     		movs	r3, #0
+  49              		.loc 1 31 2 view .LVU6
+  50 0010 04E0     		b	.L2
+  51              	.LVL2:
+  52              	.L10:
+  32:Core/Src/data-user.c **** 		switch(nic){
+  33:Core/Src/data-user.c **** 			case 0: n_Cell[nic]=MODULE1; break;
+  53              		.loc 1 33 12 is_stmt 1 view .LVU7
+  54              		.loc 1 33 23 is_stmt 0 view .LVU8
+  55 0012 624A     		ldr	r2, .L25+4
+  56 0014 1021     		movs	r1, #16
+  57 0016 D154     		strb	r1, [r2, r3]
+  58              		.loc 1 33 33 is_stmt 1 view .LVU9
+  59              	.L3:
+  31:Core/Src/data-user.c **** 		switch(nic){
+  60              		.loc 1 31 35 discriminator 2 view .LVU10
+  61 0018 0133     		adds	r3, r3, #1
+  62              	.LVL3:
+  31:Core/Src/data-user.c **** 		switch(nic){
+  63              		.loc 1 31 35 is_stmt 0 discriminator 2 view .LVU11
+  64 001a DBB2     		uxtb	r3, r3
+  65              	.LVL4:
+  66              	.L2:
+  31:Core/Src/data-user.c **** 		switch(nic){
+  67              		.loc 1 31 20 is_stmt 1 discriminator 1 view .LVU12
+  68 001c 052B     		cmp	r3, #5
+  69 001e 25D8     		bhi	.L24
+  32:Core/Src/data-user.c **** 		switch(nic){
+  70              		.loc 1 32 3 view .LVU13
+  71 0020 052B     		cmp	r3, #5
+  72 0022 F9D8     		bhi	.L3
+  73 0024 01A2     		adr	r2, .L5
+  74 0026 52F823F0 		ldr	pc, [r2, r3, lsl #2]
+  75 002a 00BF     		.p2align 2
+  76              	.L5:
+  77 002c 13000000 		.word	.L10+1
+  78 0030 45000000 		.word	.L9+1
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 3
+
+
+  79 0034 4D000000 		.word	.L8+1
+  80 0038 55000000 		.word	.L7+1
+  81 003c 5D000000 		.word	.L6+1
+  82 0040 65000000 		.word	.L4+1
+  83              		.p2align 1
+  84              	.L9:
+  34:Core/Src/data-user.c **** 			case 1: n_Cell[nic]=MODULE2; break;
+  85              		.loc 1 34 12 view .LVU14
+  86              		.loc 1 34 23 is_stmt 0 view .LVU15
+  87 0044 554A     		ldr	r2, .L25+4
+  88 0046 1021     		movs	r1, #16
+  89 0048 D154     		strb	r1, [r2, r3]
+  90              		.loc 1 34 33 is_stmt 1 view .LVU16
+  91 004a E5E7     		b	.L3
+  92              	.L8:
+  35:Core/Src/data-user.c **** 			case 2: n_Cell[nic]=MODULE3; break;
+  93              		.loc 1 35 12 view .LVU17
+  94              		.loc 1 35 23 is_stmt 0 view .LVU18
+  95 004c 534A     		ldr	r2, .L25+4
+  96 004e 1021     		movs	r1, #16
+  97 0050 D154     		strb	r1, [r2, r3]
+  98              		.loc 1 35 33 is_stmt 1 view .LVU19
+  99 0052 E1E7     		b	.L3
+ 100              	.L7:
+  36:Core/Src/data-user.c **** 			case 3: n_Cell[nic]=MODULE4; break;
+ 101              		.loc 1 36 12 view .LVU20
+ 102              		.loc 1 36 23 is_stmt 0 view .LVU21
+ 103 0054 514A     		ldr	r2, .L25+4
+ 104 0056 1021     		movs	r1, #16
+ 105 0058 D154     		strb	r1, [r2, r3]
+ 106              		.loc 1 36 33 is_stmt 1 view .LVU22
+ 107 005a DDE7     		b	.L3
+ 108              	.L6:
+  37:Core/Src/data-user.c **** 			case 4: n_Cell[nic]=MODULE5; break;
+ 109              		.loc 1 37 12 view .LVU23
+ 110              		.loc 1 37 23 is_stmt 0 view .LVU24
+ 111 005c 4F4A     		ldr	r2, .L25+4
+ 112 005e 1021     		movs	r1, #16
+ 113 0060 D154     		strb	r1, [r2, r3]
+ 114              		.loc 1 37 33 is_stmt 1 view .LVU25
+ 115 0062 D9E7     		b	.L3
+ 116              	.L4:
+  38:Core/Src/data-user.c **** 			case 5: n_Cell[nic]=MODULE6; break;
+ 117              		.loc 1 38 12 view .LVU26
+ 118              		.loc 1 38 23 is_stmt 0 view .LVU27
+ 119 0064 4D4A     		ldr	r2, .L25+4
+ 120 0066 1021     		movs	r1, #16
+ 121 0068 D154     		strb	r1, [r2, r3]
+ 122              		.loc 1 38 33 is_stmt 1 view .LVU28
+ 123 006a D5E7     		b	.L3
+ 124              	.L24:
+ 125              	.LBE2:
+  39:Core/Src/data-user.c **** 		}
+  40:Core/Src/data-user.c **** 	}
+  41:Core/Src/data-user.c **** 	/*配置状态*/
+  42:Core/Src/data-user.c **** 	LTC681x_init_cfg(Total_ic, IC);				/*辅助函数, 将ic的CFGA相关的全部初始化*/
+ 126              		.loc 1 42 2 view .LVU29
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 4
+
+
+ 127 006c 4C4C     		ldr	r4, .L25+8
+ 128 006e 2146     		mov	r1, r4
+ 129 0070 0620     		movs	r0, #6
+ 130 0072 FFF7FEFF 		bl	LTC681x_init_cfg
+ 131              	.LVL5:
+  43:Core/Src/data-user.c **** 	LTC6813_init_cfgb(Total_ic, IC);			/*辅助函数, 将ic的CFGB相关的全部初始化*/
+ 132              		.loc 1 43 2 view .LVU30
+ 133 0076 2146     		mov	r1, r4
+ 134 0078 0620     		movs	r0, #6
+ 135 007a FFF7FEFF 		bl	LTC6813_init_cfgb
+ 136              	.LVL6:
+  44:Core/Src/data-user.c **** 	wakeup_idle(Total_ic);
+ 137              		.loc 1 44 2 view .LVU31
+ 138 007e 0620     		movs	r0, #6
+ 139 0080 FFF7FEFF 		bl	wakeup_idle
+ 140              	.LVL7:
+  45:Core/Src/data-user.c **** 	LTC6813_wrcfg(Total_ic, IC);				/*发送命令,修改DCC位*/
+ 141              		.loc 1 45 2 view .LVU32
+ 142 0084 2146     		mov	r1, r4
+ 143 0086 0620     		movs	r0, #6
+ 144 0088 FFF7FEFF 		bl	LTC6813_wrcfg
+ 145              	.LVL8:
+  46:Core/Src/data-user.c **** 	LTC6813_wrcfgb(Total_ic, IC);				/*发送命令,修改DCC位*/
+ 146              		.loc 1 46 2 view .LVU33
+ 147 008c 2146     		mov	r1, r4
+ 148 008e 0620     		movs	r0, #6
+ 149 0090 FFF7FEFF 		bl	LTC6813_wrcfgb
+ 150              	.LVL9:
+  47:Core/Src/data-user.c **** 	
+  48:Core/Src/data-user.c **** 	/*CAN相关的初始化*/
+  49:Core/Src/data-user.c **** 	can1_interal_config();		//CAN1使能
+ 151              		.loc 1 49 2 view .LVU34
+ 152 0094 FFF7FEFF 		bl	can1_interal_config
+ 153              	.LVL10:
+  50:Core/Src/data-user.c **** 	can2_exteral_config();		//CAN2使能
+ 154              		.loc 1 50 2 view .LVU35
+ 155 0098 FFF7FEFF 		bl	can2_exteral_config
+ 156              	.LVL11:
+  51:Core/Src/data-user.c **** 	/*以下为阈值的配置*/
+  52:Core/Src/data-user.c **** //State部分初始化
+  53:Core/Src/data-user.c **** 	E03.State.BMS_State=BMS_INIT;
+ 157              		.loc 1 53 2 view .LVU36
+ 158              		.loc 1 53 21 is_stmt 0 view .LVU37
+ 159 009c 414B     		ldr	r3, .L25+12
+ 160 009e 0122     		movs	r2, #1
+ 161 00a0 9A73     		strb	r2, [r3, #14]
+  54:Core/Src/data-user.c **** 	E03.State.SOC=888;	//随便设置的初值
+ 162              		.loc 1 54 2 is_stmt 1 view .LVU38
+ 163              		.loc 1 54 15 is_stmt 0 view .LVU39
+ 164 00a2 4FF45E72 		mov	r2, #888
+ 165 00a6 5A81     		strh	r2, [r3, #10]	@ movhi
+  55:Core/Src/data-user.c **** //cell部分清零
+  56:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.Vol)/sizeof(vu16)); i++)
+ 166              		.loc 1 56 2 is_stmt 1 view .LVU40
+ 167              	.LBB3:
+ 168              		.loc 1 56 6 view .LVU41
+ 169              	.LVL12:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 5
+
+
+ 170              		.loc 1 56 9 is_stmt 0 view .LVU42
+ 171 00a8 0023     		movs	r3, #0
+ 172              		.loc 1 56 2 view .LVU43
+ 173 00aa 08E0     		b	.L12
+ 174              	.LVL13:
+ 175              	.L13:
+  57:Core/Src/data-user.c **** 		E03.Cell.Vol[i] =0;
+ 176              		.loc 1 57 3 is_stmt 1 discriminator 3 view .LVU44
+ 177              		.loc 1 57 19 is_stmt 0 discriminator 3 view .LVU45
+ 178 00ac 03F10801 		add	r1, r3, #8
+ 179 00b0 3C4A     		ldr	r2, .L25+12
+ 180 00b2 02EB4102 		add	r2, r2, r1, lsl #1
+ 181 00b6 0021     		movs	r1, #0
+ 182 00b8 9180     		strh	r1, [r2, #4]	@ movhi
+  56:Core/Src/data-user.c **** 		E03.Cell.Vol[i] =0;
+ 183              		.loc 1 56 54 is_stmt 1 discriminator 3 view .LVU46
+ 184 00ba 0133     		adds	r3, r3, #1
+ 185              	.LVL14:
+  56:Core/Src/data-user.c **** 		E03.Cell.Vol[i] =0;
+ 186              		.loc 1 56 54 is_stmt 0 discriminator 3 view .LVU47
+ 187 00bc DBB2     		uxtb	r3, r3
+ 188              	.LVL15:
+ 189              	.L12:
+  56:Core/Src/data-user.c **** 		E03.Cell.Vol[i] =0;
+ 190              		.loc 1 56 15 is_stmt 1 discriminator 1 view .LVU48
+ 191 00be 5F2B     		cmp	r3, #95
+ 192 00c0 F4D9     		bls	.L13
+ 193              	.LBE3:
+ 194              	.LBB4:
+  58:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.Temp)/sizeof(vu16)); i++)
+ 195              		.loc 1 58 9 is_stmt 0 view .LVU49
+ 196 00c2 0023     		movs	r3, #0
+ 197              	.LVL16:
+ 198              		.loc 1 58 9 view .LVU50
+ 199 00c4 08E0     		b	.L14
+ 200              	.LVL17:
+ 201              	.L15:
+  59:Core/Src/data-user.c **** 		E03.Cell.Temp[i]=0;
+ 202              		.loc 1 59 3 is_stmt 1 discriminator 3 view .LVU51
+ 203              		.loc 1 59 19 is_stmt 0 discriminator 3 view .LVU52
+ 204 00c6 03F16801 		add	r1, r3, #104
+ 205 00ca 364A     		ldr	r2, .L25+12
+ 206 00cc 02EB4102 		add	r2, r2, r1, lsl #1
+ 207 00d0 0021     		movs	r1, #0
+ 208 00d2 9180     		strh	r1, [r2, #4]	@ movhi
+  58:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.Temp)/sizeof(vu16)); i++)
+ 209              		.loc 1 58 55 is_stmt 1 discriminator 3 view .LVU53
+ 210 00d4 0133     		adds	r3, r3, #1
+ 211              	.LVL18:
+  58:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.Temp)/sizeof(vu16)); i++)
+ 212              		.loc 1 58 55 is_stmt 0 discriminator 3 view .LVU54
+ 213 00d6 DBB2     		uxtb	r3, r3
+ 214              	.LVL19:
+ 215              	.L14:
+  58:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.Temp)/sizeof(vu16)); i++)
+ 216              		.loc 1 58 15 is_stmt 1 discriminator 1 view .LVU55
+ 217 00d8 232B     		cmp	r3, #35
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 6
+
+
+ 218 00da F4D9     		bls	.L15
+ 219              	.LBE4:
+ 220              	.LBB5:
+  60:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.DCC)/sizeof(vu8)); i++)
+ 221              		.loc 1 60 9 is_stmt 0 view .LVU56
+ 222 00dc 0023     		movs	r3, #0
+ 223              	.LVL20:
+ 224              		.loc 1 60 9 view .LVU57
+ 225 00de 06E0     		b	.L16
+ 226              	.LVL21:
+ 227              	.L17:
+  61:Core/Src/data-user.c **** 		E03.Cell.DCC[i] =0;
+ 228              		.loc 1 61 3 is_stmt 1 discriminator 3 view .LVU58
+ 229              		.loc 1 61 19 is_stmt 0 discriminator 3 view .LVU59
+ 230 00e0 304A     		ldr	r2, .L25+12
+ 231 00e2 1A44     		add	r2, r2, r3
+ 232 00e4 0021     		movs	r1, #0
+ 233 00e6 82F82411 		strb	r1, [r2, #292]
+  60:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.DCC)/sizeof(vu8)); i++)
+ 234              		.loc 1 60 53 is_stmt 1 discriminator 3 view .LVU60
+ 235 00ea 0133     		adds	r3, r3, #1
+ 236              	.LVL22:
+  60:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.DCC)/sizeof(vu8)); i++)
+ 237              		.loc 1 60 53 is_stmt 0 discriminator 3 view .LVU61
+ 238 00ec DBB2     		uxtb	r3, r3
+ 239              	.LVL23:
+ 240              	.L16:
+  60:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Cell.DCC)/sizeof(vu8)); i++)
+ 241              		.loc 1 60 15 is_stmt 1 discriminator 1 view .LVU62
+ 242 00ee 0B2B     		cmp	r3, #11
+ 243 00f0 F6D9     		bls	.L17
+ 244              	.LBE5:
+  62:Core/Src/data-user.c **** 	E03.Cell.MaxVol	=0;
+ 245              		.loc 1 62 2 view .LVU63
+ 246              		.loc 1 62 18 is_stmt 0 view .LVU64
+ 247 00f2 2C4A     		ldr	r2, .L25+12
+ 248 00f4 0023     		movs	r3, #0
+ 249              	.LVL24:
+ 250              		.loc 1 62 18 view .LVU65
+ 251 00f6 A2F81C31 		strh	r3, [r2, #284]	@ movhi
+  63:Core/Src/data-user.c **** 	E03.Cell.MinVol	=0;
+ 252              		.loc 1 63 2 is_stmt 1 view .LVU66
+ 253              		.loc 1 63 18 is_stmt 0 view .LVU67
+ 254 00fa A2F81E31 		strh	r3, [r2, #286]	@ movhi
+  64:Core/Src/data-user.c **** 	E03.Cell.MaxTemp=0;
+ 255              		.loc 1 64 2 is_stmt 1 view .LVU68
+ 256              		.loc 1 64 18 is_stmt 0 view .LVU69
+ 257 00fe A2F82031 		strh	r3, [r2, #288]	@ movhi
+  65:Core/Src/data-user.c **** 	E03.Cell.MinTemp=0;
+ 258              		.loc 1 65 2 is_stmt 1 view .LVU70
+ 259              		.loc 1 65 18 is_stmt 0 view .LVU71
+ 260 0102 A2F82231 		strh	r3, [r2, #290]	@ movhi
+  66:Core/Src/data-user.c **** 	E03.Cell.MaxVol_No =0;
+ 261              		.loc 1 66 2 is_stmt 1 view .LVU72
+ 262              		.loc 1 66 21 is_stmt 0 view .LVU73
+ 263 0106 82F83031 		strb	r3, [r2, #304]
+  67:Core/Src/data-user.c **** 	E03.Cell.MinVol_No =0;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 7
+
+
+ 264              		.loc 1 67 2 is_stmt 1 view .LVU74
+ 265              		.loc 1 67 21 is_stmt 0 view .LVU75
+ 266 010a 82F83131 		strb	r3, [r2, #305]
+  68:Core/Src/data-user.c **** 	E03.Cell.MaxTemp_No=0;
+ 267              		.loc 1 68 2 is_stmt 1 view .LVU76
+ 268              		.loc 1 68 21 is_stmt 0 view .LVU77
+ 269 010e 82F83231 		strb	r3, [r2, #306]
+  69:Core/Src/data-user.c **** 	E03.Cell.MinTemp_No=0;
+ 270              		.loc 1 69 2 is_stmt 1 view .LVU78
+ 271              		.loc 1 69 21 is_stmt 0 view .LVU79
+ 272 0112 82F83331 		strb	r3, [r2, #307]
+  70:Core/Src/data-user.c **** //Relay部分清零
+  71:Core/Src/data-user.c **** 	E03.Relay.AIRP_State=REALY_OFF;
+ 273              		.loc 1 71 2 is_stmt 1 view .LVU80
+ 274              		.loc 1 71 22 is_stmt 0 view .LVU81
+ 275 0116 82F83431 		strb	r3, [r2, #308]
+  72:Core/Src/data-user.c **** 	E03.Relay.AIRN_State=REALY_OFF;
+ 276              		.loc 1 72 2 is_stmt 1 view .LVU82
+ 277              		.loc 1 72 22 is_stmt 0 view .LVU83
+ 278 011a 82F83531 		strb	r3, [r2, #309]
+  73:Core/Src/data-user.c **** 	E03.Relay.PrechargeAIR_State=REALY_OFF;
+ 279              		.loc 1 73 2 is_stmt 1 view .LVU84
+ 280              		.loc 1 73 30 is_stmt 0 view .LVU85
+ 281 011e 82F83631 		strb	r3, [r2, #310]
+  74:Core/Src/data-user.c **** //Alarm部分清零
+  75:Core/Src/data-user.c **** 	E03.Alarm.OV=0;
+ 282              		.loc 1 75 2 is_stmt 1 view .LVU86
+ 283              		.loc 1 75 14 is_stmt 0 view .LVU87
+ 284 0122 82F84431 		strb	r3, [r2, #324]
+  76:Core/Src/data-user.c **** 	E03.Alarm.UV=0;
+ 285              		.loc 1 76 2 is_stmt 1 view .LVU88
+ 286              		.loc 1 76 14 is_stmt 0 view .LVU89
+ 287 0126 82F84531 		strb	r3, [r2, #325]
+  77:Core/Src/data-user.c **** 	E03.Alarm.OT=0;
+ 288              		.loc 1 77 2 is_stmt 1 view .LVU90
+ 289              		.loc 1 77 14 is_stmt 0 view .LVU91
+ 290 012a 82F84631 		strb	r3, [r2, #326]
+  78:Core/Src/data-user.c **** 	E03.Alarm.UT=0;
+ 291              		.loc 1 78 2 is_stmt 1 view .LVU92
+ 292              		.loc 1 78 14 is_stmt 0 view .LVU93
+ 293 012e 82F84731 		strb	r3, [r2, #327]
+  79:Core/Src/data-user.c **** 	E03.Alarm.ODV=0;
+ 294              		.loc 1 79 2 is_stmt 1 view .LVU94
+ 295              		.loc 1 79 15 is_stmt 0 view .LVU95
+ 296 0132 82F84A31 		strb	r3, [r2, #330]
+  80:Core/Src/data-user.c **** 	E03.Alarm.ODT=0;
+ 297              		.loc 1 80 2 is_stmt 1 view .LVU96
+ 298              		.loc 1 80 15 is_stmt 0 view .LVU97
+ 299 0136 82F84B31 		strb	r3, [r2, #331]
+  81:Core/Src/data-user.c **** 	E03.Alarm.StaticDischarge_OC=0;
+ 300              		.loc 1 81 2 is_stmt 1 view .LVU98
+ 301              		.loc 1 81 30 is_stmt 0 view .LVU99
+ 302 013a 82F84C31 		strb	r3, [r2, #332]
+  82:Core/Src/data-user.c **** 	E03.Alarm.StaticCharge_OC=0;
+ 303              		.loc 1 82 2 is_stmt 1 view .LVU100
+ 304              		.loc 1 82 27 is_stmt 0 view .LVU101
+ 305 013e 82F84D31 		strb	r3, [r2, #333]
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 8
+
+
+  83:Core/Src/data-user.c **** 	E03.Alarm.IMD_Error=0;
+ 306              		.loc 1 83 2 is_stmt 1 view .LVU102
+ 307              		.loc 1 83 21 is_stmt 0 view .LVU103
+ 308 0142 82F84F31 		strb	r3, [r2, #335]
+  84:Core/Src/data-user.c **** 	E03.Alarm.Hall_Openwires=0;
+ 309              		.loc 1 84 2 is_stmt 1 view .LVU104
+ 310              		.loc 1 84 26 is_stmt 0 view .LVU105
+ 311 0146 82F85031 		strb	r3, [r2, #336]
+  85:Core/Src/data-user.c **** 	E03.Alarm.Hall_Error=0;
+ 312              		.loc 1 85 2 is_stmt 1 view .LVU106
+ 313              		.loc 1 85 22 is_stmt 0 view .LVU107
+ 314 014a 82F85131 		strb	r3, [r2, #337]
+  86:Core/Src/data-user.c **** 	E03.Alarm.Daisy_Openwires=0;
+ 315              		.loc 1 86 2 is_stmt 1 view .LVU108
+ 316              		.loc 1 86 27 is_stmt 0 view .LVU109
+ 317 014e 82F85231 		strb	r3, [r2, #338]
+  87:Core/Src/data-user.c **** 	E03.Alarm.Precharge_Fail=0;
+ 318              		.loc 1 87 2 is_stmt 1 view .LVU110
+ 319              		.loc 1 87 26 is_stmt 0 view .LVU111
+ 320 0152 82F85331 		strb	r3, [r2, #339]
+  88:Core/Src/data-user.c **** 	E03.Alarm.Relay_Error=0;
+ 321              		.loc 1 88 2 is_stmt 1 view .LVU112
+ 322              		.loc 1 88 23 is_stmt 0 view .LVU113
+ 323 0156 82F85431 		strb	r3, [r2, #340]
+  89:Core/Src/data-user.c **** 	E03.Alarm.Vol_Error=0;
+ 324              		.loc 1 89 2 is_stmt 1 view .LVU114
+ 325              		.loc 1 89 21 is_stmt 0 view .LVU115
+ 326 015a 82F85531 		strb	r3, [r2, #341]
+  90:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Vol)/sizeof(vu8)); i++)
+ 327              		.loc 1 90 2 is_stmt 1 view .LVU116
+ 328              	.LBB6:
+ 329              		.loc 1 90 6 view .LVU117
+ 330              	.LVL25:
+ 331              		.loc 1 90 2 is_stmt 0 view .LVU118
+ 332 015e 06E0     		b	.L18
+ 333              	.LVL26:
+ 334              	.L19:
+  91:Core/Src/data-user.c **** 		E03.Alarm.Openwire_Vol[i]=0;
+ 335              		.loc 1 91 3 is_stmt 1 discriminator 3 view .LVU119
+ 336              		.loc 1 91 28 is_stmt 0 discriminator 3 view .LVU120
+ 337 0160 104A     		ldr	r2, .L25+12
+ 338 0162 1A44     		add	r2, r2, r3
+ 339 0164 0021     		movs	r1, #0
+ 340 0166 82F85611 		strb	r1, [r2, #342]
+  90:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Vol)/sizeof(vu8)); i++)
+ 341              		.loc 1 90 63 is_stmt 1 discriminator 3 view .LVU121
+ 342 016a 0133     		adds	r3, r3, #1
+ 343              	.LVL27:
+  90:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Vol)/sizeof(vu8)); i++)
+ 344              		.loc 1 90 63 is_stmt 0 discriminator 3 view .LVU122
+ 345 016c DBB2     		uxtb	r3, r3
+ 346              	.LVL28:
+ 347              	.L18:
+  90:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Vol)/sizeof(vu8)); i++)
+ 348              		.loc 1 90 15 is_stmt 1 discriminator 1 view .LVU123
+ 349 016e 0C2B     		cmp	r3, #12
+ 350 0170 F6D9     		bls	.L19
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 9
+
+
+ 351              	.LBE6:
+ 352              	.LBB7:
+  92:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Temp)/sizeof(vu8)); i++)
+ 353              		.loc 1 92 9 is_stmt 0 view .LVU124
+ 354 0172 0023     		movs	r3, #0
+ 355              	.LVL29:
+ 356              		.loc 1 92 9 view .LVU125
+ 357 0174 06E0     		b	.L20
+ 358              	.LVL30:
+ 359              	.L21:
+  93:Core/Src/data-user.c **** 		E03.Alarm.Openwire_Temp[i]=0;
+ 360              		.loc 1 93 3 is_stmt 1 discriminator 3 view .LVU126
+ 361              		.loc 1 93 29 is_stmt 0 discriminator 3 view .LVU127
+ 362 0176 0B4A     		ldr	r2, .L25+12
+ 363 0178 1A44     		add	r2, r2, r3
+ 364 017a 0021     		movs	r1, #0
+ 365 017c 82F86311 		strb	r1, [r2, #355]
+  92:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Temp)/sizeof(vu8)); i++)
+ 366              		.loc 1 92 64 is_stmt 1 discriminator 3 view .LVU128
+ 367 0180 0133     		adds	r3, r3, #1
+ 368              	.LVL31:
+  92:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Temp)/sizeof(vu8)); i++)
+ 369              		.loc 1 92 64 is_stmt 0 discriminator 3 view .LVU129
+ 370 0182 DBB2     		uxtb	r3, r3
+ 371              	.LVL32:
+ 372              	.L20:
+  92:Core/Src/data-user.c **** 	for(u8 i=0; i<(sizeof(E03.Alarm.Openwire_Temp)/sizeof(vu8)); i++)
+ 373              		.loc 1 92 15 is_stmt 1 discriminator 1 view .LVU130
+ 374 0184 042B     		cmp	r3, #4
+ 375 0186 F6D9     		bls	.L21
+ 376              	.LBE7:
+  94:Core/Src/data-user.c **** //阈值部分读取
+  95:Core/Src/data-user.c **** 	E03.State.Init_flag=0;	//防止数据乱跑, 先给个0, 最终结果要看下面函数FLASH读回
+ 377              		.loc 1 95 2 view .LVU131
+ 378              		.loc 1 95 21 is_stmt 0 view .LVU132
+ 379 0188 064B     		ldr	r3, .L25+12
+ 380              	.LVL33:
+ 381              		.loc 1 95 21 view .LVU133
+ 382 018a 0022     		movs	r2, #0
+ 383 018c DA73     		strb	r2, [r3, #15]
+  96:Core/Src/data-user.c **** 	Threshold_Update();		//该函数还会在CAN中出现, 都是为了修改阈值的函数
+ 384              		.loc 1 96 2 is_stmt 1 view .LVU134
+ 385 018e FFF7FEFF 		bl	Threshold_Update
+ 386              	.LVL34:
+  97:Core/Src/data-user.c **** //读取上一次关机的屏蔽位
+  98:Core/Src/data-user.c **** 	Flash_Read_Errormute();
+ 387              		.loc 1 98 2 view .LVU135
+ 388 0192 FFF7FEFF 		bl	Flash_Read_Errormute
+ 389              	.LVL35:
+  99:Core/Src/data-user.c **** }
+ 390              		.loc 1 99 1 is_stmt 0 view .LVU136
+ 391 0196 10BD     		pop	{r4, pc}
+ 392              	.L26:
+ 393              		.align	2
+ 394              	.L25:
+ 395 0198 00000000 		.word	Module
+ 396 019c 00000000 		.word	n_Cell
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 10
+
+
+ 397 01a0 00000000 		.word	IC
+ 398 01a4 00000000 		.word	E03
+ 399              		.cfi_endproc
+ 400              	.LFE65:
+ 402              		.text
+ 403              	.Letext0:
+ 404              		.file 2 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\machine\\_default_types.h"
+ 405              		.file 3 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\sys\\_stdint.h"
+ 406              		.file 4 "Core/Inc/data-user.h"
+ 407              		.file 5 "Core/Inc/ltc681x-user.h"
+ 408              		.file 6 "Core/Inc/daisy-user.h"
+ 409              		.file 7 "Core/Inc/flash-user.h"
+ 410              		.file 8 "Core/Inc/can-user.h"
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s 			page 11
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 data-user.c
+C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s:18     .text.Data_Init:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s:24     .text.Data_Init:00000000 Data_Init
+C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s:77     .text.Data_Init:0000002c $d
+C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s:83     .text.Data_Init:00000044 $t
+C:\Users\ride_pig\AppData\Local\Temp\ccSIn5EY.s:395    .text.Data_Init:00000198 $d
+
+UNDEFINED SYMBOLS
+init_PEC15_Table
+Module_Init
+LTC681x_init_cfg
+LTC6813_init_cfgb
+wakeup_idle
+LTC6813_wrcfg
+LTC6813_wrcfgb
+can1_interal_config
+can2_exteral_config
+Threshold_Update
+Flash_Read_Errormute
+Module
+n_Cell
+IC
+E03

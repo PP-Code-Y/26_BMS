@@ -1,0 +1,4 @@
+arm-none-eabi-objcopy --update-section ER_IROM1="c:\Users\ride_pig\Desktop\HAL_BMS_2023_Test_E\Core\build\HAL_BMS_Modified\HAL_BMS_Modified.bin" "c:\Users\ride_pig\Desktop\HAL_BMS_2023_Test_E\Core\build\HAL_BMS_Modified\HAL_BMS_Modified.axf" "c:\Users\ride_pig\Desktop\HAL_BMS_2023_Test_E\Core\build\HAL_BMS_Modified\HAL_BMS_Modified.elf"
+
+arm-none-eabi-objcopy: c:\Users\ride_pig\Desktop\HAL_BMS_2023_Test_E\Core\build\HAL_BMS_Modified\HAL_BMS_Modified.elf: warning: allocated section `RW_IRAM1' not in segment
+

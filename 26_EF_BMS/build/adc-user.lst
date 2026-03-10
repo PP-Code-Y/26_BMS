@@ -1,0 +1,1032 @@
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.arch armv7-m
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"adc-user.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.adc_read_average,"ax",%progbits
+  18              		.align	1
+  19              		.global	adc_read_average
+  20              		.syntax unified
+  21              		.thumb
+  22              		.thumb_func
+  24              	adc_read_average:
+  25              	.LVL0:
+  26              	.LFB65:
+  27              		.file 1 "Core/Src/adc-user.c"
+   1:Core/Src/adc-user.c **** /*
+   2:Core/Src/adc-user.c ****  * adc.c
+   3:Core/Src/adc-user.c ****  *
+   4:Core/Src/adc-user.c ****  *  Created on: 2022年3月3日
+   5:Core/Src/adc-user.c ****  *      Author: BBBBB
+   6:Core/Src/adc-user.c ****  *      brief:  关于预充和电压的计算
+   7:Core/Src/adc-user.c ****  *				注意ADC不能开连续转换模式, 会导致adc数组混乱
+   8:Core/Src/adc-user.c ****  */
+   9:Core/Src/adc-user.c **** 
+  10:Core/Src/adc-user.c **** #include "data-user.h"
+  11:Core/Src/adc-user.c **** #include "adc-user.h"
+  12:Core/Src/adc-user.c **** #include "main.h"
+  13:Core/Src/adc-user.c **** 
+  14:Core/Src/adc-user.c **** extern BMS E03;
+  15:Core/Src/adc-user.c **** /*adc[0]为ADC_PRE, adc[1]为ADC_TS,
+  16:Core/Src/adc-user.c ****  *adc[2]为PRE_STATE, adc[3]为AIRP_STATE, adc[4]为AIRN_STATE
+  17:Core/Src/adc-user.c ****  */
+  18:Core/Src/adc-user.c **** extern vu16 adc[num_adc];
+  19:Core/Src/adc-user.c **** extern ADC_HandleTypeDef hadc1;
+  20:Core/Src/adc-user.c **** 
+  21:Core/Src/adc-user.c **** 
+  22:Core/Src/adc-user.c **** 
+  23:Core/Src/adc-user.c **** u16 adc_read_average(uint32_t Channel, u8 times)
+  24:Core/Src/adc-user.c **** {
+  28              		.loc 1 24 1 view -0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 16
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		.loc 1 24 1 is_stmt 0 view .LVU1
+  33 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+  34              	.LCFI0:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 2
+
+
+  35              		.cfi_def_cfa_offset 20
+  36              		.cfi_offset 4, -20
+  37              		.cfi_offset 5, -16
+  38              		.cfi_offset 6, -12
+  39              		.cfi_offset 7, -8
+  40              		.cfi_offset 14, -4
+  41 0002 85B0     		sub	sp, sp, #20
+  42              	.LCFI1:
+  43              		.cfi_def_cfa_offset 40
+  44 0004 0E46     		mov	r6, r1
+  25:Core/Src/adc-user.c **** 	 u32 sum = 0;
+  45              		.loc 1 25 3 is_stmt 1 view .LVU2
+  46              	.LVL1:
+  26:Core/Src/adc-user.c **** 	 ADC_ChannelConfTypeDef sConfig = {0};
+  47              		.loc 1 26 3 view .LVU3
+  48              		.loc 1 26 26 is_stmt 0 view .LVU4
+  49 0006 0023     		movs	r3, #0
+  50 0008 0193     		str	r3, [sp, #4]
+  51 000a 0293     		str	r3, [sp, #8]
+  52 000c 0393     		str	r3, [sp, #12]
+  27:Core/Src/adc-user.c **** 	 sConfig.Channel = Channel;                                    
+  53              		.loc 1 27 3 is_stmt 1 view .LVU5
+  54              		.loc 1 27 19 is_stmt 0 view .LVU6
+  55 000e 0190     		str	r0, [sp, #4]
+  28:Core/Src/adc-user.c **** 	 sConfig.Rank = ADC_REGULAR_RANK_1;                              
+  56              		.loc 1 28 3 is_stmt 1 view .LVU7
+  57              		.loc 1 28 16 is_stmt 0 view .LVU8
+  58 0010 0123     		movs	r3, #1
+  59 0012 0293     		str	r3, [sp, #8]
+  29:Core/Src/adc-user.c **** 	 sConfig.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;              //不采用dma，多通道采样�
+  60              		.loc 1 29 3 is_stmt 1 view .LVU9
+  61              		.loc 1 29 24 is_stmt 0 view .LVU10
+  62 0014 0523     		movs	r3, #5
+  63 0016 0393     		str	r3, [sp, #12]
+  30:Core/Src/adc-user.c **** 	 if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)             
+  64              		.loc 1 30 3 is_stmt 1 view .LVU11
+  65              		.loc 1 30 7 is_stmt 0 view .LVU12
+  66 0018 01A9     		add	r1, sp, #4
+  67              	.LVL2:
+  68              		.loc 1 30 7 view .LVU13
+  69 001a 1448     		ldr	r0, .L10
+  70              	.LVL3:
+  71              		.loc 1 30 7 view .LVU14
+  72 001c FFF7FEFF 		bl	HAL_ADC_ConfigChannel
+  73              	.LVL4:
+  74              		.loc 1 30 6 view .LVU15
+  75 0020 10B9     		cbnz	r0, .L8
+  76              	.L2:
+  24:Core/Src/adc-user.c **** 	 u32 sum = 0;
+  77              		.loc 1 24 1 discriminator 1 view .LVU16
+  78 0022 0024     		movs	r4, #0
+  79 0024 2746     		mov	r7, r4
+  80 0026 06E0     		b	.L3
+  81              	.L8:
+  31:Core/Src/adc-user.c **** 	 {
+  32:Core/Src/adc-user.c **** 		  Error_Handler();
+  82              		.loc 1 32 5 is_stmt 1 view .LVU17
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 3
+
+
+  83 0028 FFF7FEFF 		bl	Error_Handler
+  84              	.LVL5:
+  85 002c F9E7     		b	.L2
+  86              	.LVL6:
+  87              	.L4:
+  88              	.LBB2:
+  33:Core/Src/adc-user.c **** 	 }
+  34:Core/Src/adc-user.c **** 	 for(u8 i=0; i<times; i++)
+  35:Core/Src/adc-user.c **** 	 {
+  36:Core/Src/adc-user.c **** 	     HAL_ADC_Start(&hadc1);   //开启adc
+  37:Core/Src/adc-user.c **** 	     HAL_ADC_PollForConversion(&hadc1, 500);  //等待采集结束
+  38:Core/Src/adc-user.c **** 		  if(HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC))
+  39:Core/Src/adc-user.c **** 		  {		
+  40:Core/Src/adc-user.c **** 			  sum+= HAL_ADC_GetValue(&hadc1);
+  41:Core/Src/adc-user.c **** 		  }
+  42:Core/Src/adc-user.c **** 		  else
+  43:Core/Src/adc-user.c **** 		  {       
+  44:Core/Src/adc-user.c **** 				i = i - 1;
+  89              		.loc 1 44 5 view .LVU18
+  90              		.loc 1 44 7 is_stmt 0 view .LVU19
+  91 002e 013C     		subs	r4, r4, #1
+  92              	.LVL7:
+  93              		.loc 1 44 7 view .LVU20
+  94 0030 E4B2     		uxtb	r4, r4
+  95              	.LVL8:
+  96              	.L5:
+  34:Core/Src/adc-user.c **** 	 {
+  97              		.loc 1 34 25 is_stmt 1 discriminator 2 view .LVU21
+  98 0032 0134     		adds	r4, r4, #1
+  99              	.LVL9:
+  34:Core/Src/adc-user.c **** 	 {
+ 100              		.loc 1 34 25 is_stmt 0 discriminator 2 view .LVU22
+ 101 0034 E4B2     		uxtb	r4, r4
+ 102              	.LVL10:
+ 103              	.L3:
+  34:Core/Src/adc-user.c **** 	 {
+ 104              		.loc 1 34 16 is_stmt 1 discriminator 1 view .LVU23
+ 105 0036 B442     		cmp	r4, r6
+ 106 0038 13D2     		bcs	.L9
+  36:Core/Src/adc-user.c **** 	     HAL_ADC_PollForConversion(&hadc1, 500);  //等待采集结束
+ 107              		.loc 1 36 7 view .LVU24
+ 108 003a 0C4D     		ldr	r5, .L10
+ 109 003c 2846     		mov	r0, r5
+ 110 003e FFF7FEFF 		bl	HAL_ADC_Start
+ 111              	.LVL11:
+  37:Core/Src/adc-user.c **** 		  if(HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC))
+ 112              		.loc 1 37 7 view .LVU25
+ 113 0042 4FF4FA71 		mov	r1, #500
+ 114 0046 2846     		mov	r0, r5
+ 115 0048 FFF7FEFF 		bl	HAL_ADC_PollForConversion
+ 116              	.LVL12:
+  38:Core/Src/adc-user.c **** 		  {		
+ 117              		.loc 1 38 5 view .LVU26
+  38:Core/Src/adc-user.c **** 		  {		
+ 118              		.loc 1 38 8 is_stmt 0 view .LVU27
+ 119 004c 2846     		mov	r0, r5
+ 120 004e FFF7FEFF 		bl	HAL_ADC_GetState
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 4
+
+
+ 121              	.LVL13:
+  38:Core/Src/adc-user.c **** 		  {		
+ 122              		.loc 1 38 7 view .LVU28
+ 123 0052 10F4007F 		tst	r0, #512
+ 124 0056 EAD0     		beq	.L4
+  40:Core/Src/adc-user.c **** 		  }
+ 125              		.loc 1 40 6 is_stmt 1 view .LVU29
+  40:Core/Src/adc-user.c **** 		  }
+ 126              		.loc 1 40 12 is_stmt 0 view .LVU30
+ 127 0058 2846     		mov	r0, r5
+ 128 005a FFF7FEFF 		bl	HAL_ADC_GetValue
+ 129              	.LVL14:
+  40:Core/Src/adc-user.c **** 		  }
+ 130              		.loc 1 40 9 view .LVU31
+ 131 005e 0744     		add	r7, r7, r0
+ 132              	.LVL15:
+  40:Core/Src/adc-user.c **** 		  }
+ 133              		.loc 1 40 9 view .LVU32
+ 134 0060 E7E7     		b	.L5
+ 135              	.L9:
+  40:Core/Src/adc-user.c **** 		  }
+ 136              		.loc 1 40 9 view .LVU33
+ 137              	.LBE2:
+  45:Core/Src/adc-user.c **** 		  }
+  46:Core/Src/adc-user.c **** 	 }
+  47:Core/Src/adc-user.c **** 	 return sum/times;
+ 138              		.loc 1 47 3 is_stmt 1 view .LVU34
+ 139              		.loc 1 47 13 is_stmt 0 view .LVU35
+ 140 0062 B7FBF6F0 		udiv	r0, r7, r6
+  48:Core/Src/adc-user.c **** }
+ 141              		.loc 1 48 1 view .LVU36
+ 142 0066 80B2     		uxth	r0, r0
+ 143 0068 05B0     		add	sp, sp, #20
+ 144              	.LCFI2:
+ 145              		.cfi_def_cfa_offset 20
+ 146              		@ sp needed
+ 147 006a F0BD     		pop	{r4, r5, r6, r7, pc}
+ 148              	.LVL16:
+ 149              	.L11:
+ 150              		.loc 1 48 1 view .LVU37
+ 151              		.align	2
+ 152              	.L10:
+ 153 006c 00000000 		.word	hadc1
+ 154              		.cfi_endproc
+ 155              	.LFE65:
+ 157              		.section	.text.adc_average,"ax",%progbits
+ 158              		.align	1
+ 159              		.global	adc_average
+ 160              		.syntax unified
+ 161              		.thumb
+ 162              		.thumb_func
+ 164              	adc_average:
+ 165              	.LVL17:
+ 166              	.LFB66:
+  49:Core/Src/adc-user.c **** 
+  50:Core/Src/adc-user.c **** u16 adc_average(u8 adc_ch, u8 times)
+  51:Core/Src/adc-user.c **** {
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 5
+
+
+ 167              		.loc 1 51 1 is_stmt 1 view -0
+ 168              		.cfi_startproc
+ 169              		@ args = 0, pretend = 0, frame = 0
+ 170              		@ frame_needed = 0, uses_anonymous_args = 0
+ 171              		.loc 1 51 1 is_stmt 0 view .LVU39
+ 172 0000 08B5     		push	{r3, lr}
+ 173              	.LCFI3:
+ 174              		.cfi_def_cfa_offset 8
+ 175              		.cfi_offset 3, -8
+ 176              		.cfi_offset 14, -4
+  52:Core/Src/adc-user.c **** 	u32 vol ;
+ 177              		.loc 1 52 2 is_stmt 1 view .LVU40
+  53:Core/Src/adc-user.c **** 	switch(adc_ch)
+ 178              		.loc 1 53 2 view .LVU41
+ 179 0002 0428     		cmp	r0, #4
+ 180 0004 0AD8     		bhi	.L13
+ 181 0006 DFE800F0 		tbb	[pc, r0]
+ 182              	.L15:
+ 183 000a 03       		.byte	(.L19-.L15)/2
+ 184 000b 0B       		.byte	(.L18-.L15)/2
+ 185 000c 12       		.byte	(.L17-.L15)/2
+ 186 000d 19       		.byte	(.L16-.L15)/2
+ 187 000e 20       		.byte	(.L14-.L15)/2
+ 188 000f 00       		.p2align 1
+ 189              	.L19:
+  54:Core/Src/adc-user.c **** 	{
+  55:Core/Src/adc-user.c **** 		case adc_pre:
+  56:Core/Src/adc-user.c **** 			vol = adc[0] = adc_read_average(ADC_CHANNEL_0, times);   
+ 190              		.loc 1 56 4 view .LVU42
+ 191              		.loc 1 56 19 is_stmt 0 view .LVU43
+ 192 0010 0020     		movs	r0, #0
+ 193              	.LVL18:
+ 194              		.loc 1 56 19 view .LVU44
+ 195 0012 FFF7FEFF 		bl	adc_read_average
+ 196              	.LVL19:
+ 197              		.loc 1 56 19 view .LVU45
+ 198 0016 0346     		mov	r3, r0
+ 199              		.loc 1 56 17 view .LVU46
+ 200 0018 0F4A     		ldr	r2, .L22
+ 201 001a 1080     		strh	r0, [r2]	@ movhi
+ 202              	.LVL20:
+  57:Core/Src/adc-user.c **** 			break;
+ 203              		.loc 1 57 4 is_stmt 1 view .LVU47
+ 204              	.L13:
+  58:Core/Src/adc-user.c **** 		case adc_ts:
+  59:Core/Src/adc-user.c **** 			vol = adc[1] = adc_read_average(ADC_CHANNEL_1, times);   
+  60:Core/Src/adc-user.c **** 			break;
+  61:Core/Src/adc-user.c **** 		case pre_state:
+  62:Core/Src/adc-user.c **** 			vol = adc[2] = adc_read_average(ADC_CHANNEL_8, times);   
+  63:Core/Src/adc-user.c **** 			break;
+  64:Core/Src/adc-user.c **** 		case airp_state:
+  65:Core/Src/adc-user.c **** 			vol = adc[3] = adc_read_average(ADC_CHANNEL_14, times);   
+  66:Core/Src/adc-user.c **** 			break;
+  67:Core/Src/adc-user.c **** 		case airn_state:
+  68:Core/Src/adc-user.c **** 			vol = adc[4] = adc_read_average(ADC_CHANNEL_15, times);   
+  69:Core/Src/adc-user.c **** 			break;
+  70:Core/Src/adc-user.c **** 	}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 6
+
+
+  71:Core/Src/adc-user.c **** 	return vol;
+ 205              		.loc 1 71 2 view .LVU48
+  72:Core/Src/adc-user.c **** }
+ 206              		.loc 1 72 1 is_stmt 0 view .LVU49
+ 207 001c 98B2     		uxth	r0, r3
+ 208 001e 08BD     		pop	{r3, pc}
+ 209              	.LVL21:
+ 210              	.L18:
+  59:Core/Src/adc-user.c **** 			break;
+ 211              		.loc 1 59 4 is_stmt 1 view .LVU50
+  59:Core/Src/adc-user.c **** 			break;
+ 212              		.loc 1 59 19 is_stmt 0 view .LVU51
+ 213 0020 0120     		movs	r0, #1
+ 214              	.LVL22:
+  59:Core/Src/adc-user.c **** 			break;
+ 215              		.loc 1 59 19 view .LVU52
+ 216 0022 FFF7FEFF 		bl	adc_read_average
+ 217              	.LVL23:
+  59:Core/Src/adc-user.c **** 			break;
+ 218              		.loc 1 59 19 view .LVU53
+ 219 0026 0346     		mov	r3, r0
+  59:Core/Src/adc-user.c **** 			break;
+ 220              		.loc 1 59 17 view .LVU54
+ 221 0028 0B4A     		ldr	r2, .L22
+ 222 002a 5080     		strh	r0, [r2, #2]	@ movhi
+ 223              	.LVL24:
+  60:Core/Src/adc-user.c **** 		case pre_state:
+ 224              		.loc 1 60 4 is_stmt 1 view .LVU55
+ 225 002c F6E7     		b	.L13
+ 226              	.LVL25:
+ 227              	.L17:
+  62:Core/Src/adc-user.c **** 			break;
+ 228              		.loc 1 62 4 view .LVU56
+  62:Core/Src/adc-user.c **** 			break;
+ 229              		.loc 1 62 19 is_stmt 0 view .LVU57
+ 230 002e 0820     		movs	r0, #8
+ 231              	.LVL26:
+  62:Core/Src/adc-user.c **** 			break;
+ 232              		.loc 1 62 19 view .LVU58
+ 233 0030 FFF7FEFF 		bl	adc_read_average
+ 234              	.LVL27:
+  62:Core/Src/adc-user.c **** 			break;
+ 235              		.loc 1 62 19 view .LVU59
+ 236 0034 0346     		mov	r3, r0
+  62:Core/Src/adc-user.c **** 			break;
+ 237              		.loc 1 62 17 view .LVU60
+ 238 0036 084A     		ldr	r2, .L22
+ 239 0038 9080     		strh	r0, [r2, #4]	@ movhi
+ 240              	.LVL28:
+  63:Core/Src/adc-user.c **** 		case airp_state:
+ 241              		.loc 1 63 4 is_stmt 1 view .LVU61
+ 242 003a EFE7     		b	.L13
+ 243              	.LVL29:
+ 244              	.L16:
+  65:Core/Src/adc-user.c **** 			break;
+ 245              		.loc 1 65 4 view .LVU62
+  65:Core/Src/adc-user.c **** 			break;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 7
+
+
+ 246              		.loc 1 65 19 is_stmt 0 view .LVU63
+ 247 003c 0E20     		movs	r0, #14
+ 248              	.LVL30:
+  65:Core/Src/adc-user.c **** 			break;
+ 249              		.loc 1 65 19 view .LVU64
+ 250 003e FFF7FEFF 		bl	adc_read_average
+ 251              	.LVL31:
+  65:Core/Src/adc-user.c **** 			break;
+ 252              		.loc 1 65 19 view .LVU65
+ 253 0042 0346     		mov	r3, r0
+  65:Core/Src/adc-user.c **** 			break;
+ 254              		.loc 1 65 17 view .LVU66
+ 255 0044 044A     		ldr	r2, .L22
+ 256 0046 D080     		strh	r0, [r2, #6]	@ movhi
+ 257              	.LVL32:
+  66:Core/Src/adc-user.c **** 		case airn_state:
+ 258              		.loc 1 66 4 is_stmt 1 view .LVU67
+ 259 0048 E8E7     		b	.L13
+ 260              	.LVL33:
+ 261              	.L14:
+  68:Core/Src/adc-user.c **** 			break;
+ 262              		.loc 1 68 4 view .LVU68
+  68:Core/Src/adc-user.c **** 			break;
+ 263              		.loc 1 68 19 is_stmt 0 view .LVU69
+ 264 004a 0F20     		movs	r0, #15
+ 265              	.LVL34:
+  68:Core/Src/adc-user.c **** 			break;
+ 266              		.loc 1 68 19 view .LVU70
+ 267 004c FFF7FEFF 		bl	adc_read_average
+ 268              	.LVL35:
+  68:Core/Src/adc-user.c **** 			break;
+ 269              		.loc 1 68 19 view .LVU71
+ 270 0050 0346     		mov	r3, r0
+  68:Core/Src/adc-user.c **** 			break;
+ 271              		.loc 1 68 17 view .LVU72
+ 272 0052 014A     		ldr	r2, .L22
+ 273 0054 1081     		strh	r0, [r2, #8]	@ movhi
+ 274              	.LVL36:
+  69:Core/Src/adc-user.c **** 	}
+ 275              		.loc 1 69 4 is_stmt 1 view .LVU73
+ 276 0056 E1E7     		b	.L13
+ 277              	.L23:
+ 278              		.align	2
+ 279              	.L22:
+ 280 0058 00000000 		.word	adc
+ 281              		.cfi_endproc
+ 282              	.LFE66:
+ 284              		.global	__aeabi_i2d
+ 285              		.global	__aeabi_dmul
+ 286              		.global	__aeabi_ddiv
+ 287              		.global	__aeabi_d2f
+ 288              		.global	__aeabi_f2uiz
+ 289              		.section	.text.PRE_Voltage,"ax",%progbits
+ 290              		.align	1
+ 291              		.global	PRE_Voltage
+ 292              		.syntax unified
+ 293              		.thumb
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 8
+
+
+ 294              		.thumb_func
+ 296              	PRE_Voltage:
+ 297              	.LFB67:
+  73:Core/Src/adc-user.c **** 
+  74:Core/Src/adc-user.c **** /*
+  75:Core/Src/adc-user.c ****  *通过霍尔电压器,ADC计算预充电压
+  76:Core/Src/adc-user.c ****  * 单位100mV
+  77:Core/Src/adc-user.c ****  * */
+  78:Core/Src/adc-user.c **** float PRE_Voltage(){
+ 298              		.loc 1 78 20 view -0
+ 299              		.cfi_startproc
+ 300              		@ args = 0, pretend = 0, frame = 0
+ 301              		@ frame_needed = 0, uses_anonymous_args = 0
+ 302 0000 10B5     		push	{r4, lr}
+ 303              	.LCFI4:
+ 304              		.cfi_def_cfa_offset 8
+ 305              		.cfi_offset 4, -8
+ 306              		.cfi_offset 14, -4
+  79:Core/Src/adc-user.c **** 	u16 AD_PRE;
+ 307              		.loc 1 79 2 view .LVU75
+  80:Core/Src/adc-user.c **** 	float temp;
+ 308              		.loc 1 80 2 view .LVU76
+  81:Core/Src/adc-user.c **** 	AD_PRE=adc_average(adc_pre, 20);
+ 309              		.loc 1 81 2 view .LVU77
+ 310              		.loc 1 81 9 is_stmt 0 view .LVU78
+ 311 0002 1421     		movs	r1, #20
+ 312 0004 0020     		movs	r0, #0
+ 313 0006 FFF7FEFF 		bl	adc_average
+ 314              	.LVL37:
+  82:Core/Src/adc-user.c **** 	temp=AD_PRE/4096.0*3.3/0.6*1000; 		//单位0.1V/bit, 也就是说4171为417.1V
+ 315              		.loc 1 82 2 is_stmt 1 view .LVU79
+ 316              		.loc 1 82 13 is_stmt 0 view .LVU80
+ 317 000a FFF7FEFF 		bl	__aeabi_i2d
+ 318              	.LVL38:
+ 319              		.loc 1 82 13 view .LVU81
+ 320 000e 0022     		movs	r2, #0
+ 321 0010 114B     		ldr	r3, .L26+16
+ 322 0012 FFF7FEFF 		bl	__aeabi_dmul
+ 323              	.LVL39:
+ 324              		.loc 1 82 20 view .LVU82
+ 325 0016 0CA3     		adr	r3, .L26
+ 326 0018 D3E90023 		ldrd	r2, [r3]
+ 327 001c FFF7FEFF 		bl	__aeabi_dmul
+ 328              	.LVL40:
+ 329              		.loc 1 82 24 view .LVU83
+ 330 0020 0BA3     		adr	r3, .L26+8
+ 331 0022 D3E90023 		ldrd	r2, [r3]
+ 332 0026 FFF7FEFF 		bl	__aeabi_ddiv
+ 333              	.LVL41:
+ 334              		.loc 1 82 28 view .LVU84
+ 335 002a 0022     		movs	r2, #0
+ 336 002c 0B4B     		ldr	r3, .L26+20
+ 337 002e FFF7FEFF 		bl	__aeabi_dmul
+ 338              	.LVL42:
+ 339              		.loc 1 82 6 view .LVU85
+ 340 0032 FFF7FEFF 		bl	__aeabi_d2f
+ 341              	.LVL43:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 9
+
+
+ 342 0036 0446     		mov	r4, r0
+ 343              	.LVL44:
+  83:Core/Src/adc-user.c **** 											//计算得到总电压, AD_TS/4096.0*3.3得到ADC采样电压, /0.6为22和33电阻分�
+  84:Core/Src/adc-user.c **** 	E03.State.PrechargeVoltage=temp;	//进行状态更新
+ 344              		.loc 1 84 2 is_stmt 1 view .LVU86
+ 345              		.loc 1 84 28 is_stmt 0 view .LVU87
+ 346 0038 FFF7FEFF 		bl	__aeabi_f2uiz
+ 347              	.LVL45:
+ 348              		.loc 1 84 28 view .LVU88
+ 349 003c 80B2     		uxth	r0, r0
+ 350 003e 084B     		ldr	r3, .L26+24
+ 351 0040 1881     		strh	r0, [r3, #8]	@ movhi
+  85:Core/Src/adc-user.c **** 	return temp;
+ 352              		.loc 1 85 2 is_stmt 1 view .LVU89
+  86:Core/Src/adc-user.c **** }
+ 353              		.loc 1 86 1 is_stmt 0 view .LVU90
+ 354 0042 2046     		mov	r0, r4
+ 355 0044 10BD     		pop	{r4, pc}
+ 356              	.LVL46:
+ 357              	.L27:
+ 358              		.loc 1 86 1 view .LVU91
+ 359 0046 00BF     		.align	3
+ 360              	.L26:
+ 361 0048 66666666 		.word	1717986918
+ 362 004c 66660A40 		.word	1074423398
+ 363 0050 33333333 		.word	858993459
+ 364 0054 3333E33F 		.word	1071854387
+ 365 0058 0000303F 		.word	1060110336
+ 366 005c 00408F40 		.word	1083129856
+ 367 0060 00000000 		.word	E03
+ 368              		.cfi_endproc
+ 369              	.LFE67:
+ 371              		.section	.text.TS_Voltage,"ax",%progbits
+ 372              		.align	1
+ 373              		.global	TS_Voltage
+ 374              		.syntax unified
+ 375              		.thumb
+ 376              		.thumb_func
+ 378              	TS_Voltage:
+ 379              	.LFB68:
+  87:Core/Src/adc-user.c **** /*
+  88:Core/Src/adc-user.c ****  *通过霍尔电压器,ADC计算总压
+  89:Core/Src/adc-user.c ****  * 单位100mV
+  90:Core/Src/adc-user.c ****  * */
+  91:Core/Src/adc-user.c **** float TS_Voltage(void){
+ 380              		.loc 1 91 23 is_stmt 1 view -0
+ 381              		.cfi_startproc
+ 382              		@ args = 0, pretend = 0, frame = 0
+ 383              		@ frame_needed = 0, uses_anonymous_args = 0
+ 384 0000 10B5     		push	{r4, lr}
+ 385              	.LCFI5:
+ 386              		.cfi_def_cfa_offset 8
+ 387              		.cfi_offset 4, -8
+ 388              		.cfi_offset 14, -4
+  92:Core/Src/adc-user.c **** 	u16 AD_TS;
+ 389              		.loc 1 92 2 view .LVU93
+  93:Core/Src/adc-user.c **** 	float temp;
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 10
+
+
+ 390              		.loc 1 93 2 view .LVU94
+  94:Core/Src/adc-user.c **** 	AD_TS=adc_average(adc_ts, 20);
+ 391              		.loc 1 94 2 view .LVU95
+ 392              		.loc 1 94 8 is_stmt 0 view .LVU96
+ 393 0002 1421     		movs	r1, #20
+ 394 0004 0120     		movs	r0, #1
+ 395 0006 FFF7FEFF 		bl	adc_average
+ 396              	.LVL47:
+  95:Core/Src/adc-user.c **** 	temp=AD_TS/4096.0*3.3/0.6*1000; 	//计算得到总电压, 源公式AD_TS/4095.0*3.3/0.6*1000
+ 397              		.loc 1 95 2 is_stmt 1 view .LVU97
+ 398              		.loc 1 95 12 is_stmt 0 view .LVU98
+ 399 000a FFF7FEFF 		bl	__aeabi_i2d
+ 400              	.LVL48:
+ 401              		.loc 1 95 12 view .LVU99
+ 402 000e 0022     		movs	r2, #0
+ 403 0010 114B     		ldr	r3, .L30+16
+ 404 0012 FFF7FEFF 		bl	__aeabi_dmul
+ 405              	.LVL49:
+ 406              		.loc 1 95 19 view .LVU100
+ 407 0016 0CA3     		adr	r3, .L30
+ 408 0018 D3E90023 		ldrd	r2, [r3]
+ 409 001c FFF7FEFF 		bl	__aeabi_dmul
+ 410              	.LVL50:
+ 411              		.loc 1 95 23 view .LVU101
+ 412 0020 0BA3     		adr	r3, .L30+8
+ 413 0022 D3E90023 		ldrd	r2, [r3]
+ 414 0026 FFF7FEFF 		bl	__aeabi_ddiv
+ 415              	.LVL51:
+ 416              		.loc 1 95 27 view .LVU102
+ 417 002a 0022     		movs	r2, #0
+ 418 002c 0B4B     		ldr	r3, .L30+20
+ 419 002e FFF7FEFF 		bl	__aeabi_dmul
+ 420              	.LVL52:
+ 421              		.loc 1 95 6 view .LVU103
+ 422 0032 FFF7FEFF 		bl	__aeabi_d2f
+ 423              	.LVL53:
+ 424 0036 0446     		mov	r4, r0
+ 425              	.LVL54:
+  96:Core/Src/adc-user.c **** 										//计算得到总电压, AD_TS/4096.0*3.3得到ADC采样电压, /0.6为22和33电阻分�
+  97:Core/Src/adc-user.c **** 	E03.State.TotalVoltage=temp;	//进行状态更新
+ 426              		.loc 1 97 2 is_stmt 1 view .LVU104
+ 427              		.loc 1 97 24 is_stmt 0 view .LVU105
+ 428 0038 FFF7FEFF 		bl	__aeabi_f2uiz
+ 429              	.LVL55:
+ 430              		.loc 1 97 24 view .LVU106
+ 431 003c 80B2     		uxth	r0, r0
+ 432 003e 084B     		ldr	r3, .L30+24
+ 433 0040 D880     		strh	r0, [r3, #6]	@ movhi
+  98:Core/Src/adc-user.c **** 	return temp;
+ 434              		.loc 1 98 2 is_stmt 1 view .LVU107
+  99:Core/Src/adc-user.c **** }
+ 435              		.loc 1 99 1 is_stmt 0 view .LVU108
+ 436 0042 2046     		mov	r0, r4
+ 437 0044 10BD     		pop	{r4, pc}
+ 438              	.LVL56:
+ 439              	.L31:
+ 440              		.loc 1 99 1 view .LVU109
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 11
+
+
+ 441 0046 00BF     		.align	3
+ 442              	.L30:
+ 443 0048 66666666 		.word	1717986918
+ 444 004c 66660A40 		.word	1074423398
+ 445 0050 33333333 		.word	858993459
+ 446 0054 3333E33F 		.word	1071854387
+ 447 0058 0000303F 		.word	1060110336
+ 448 005c 00408F40 		.word	1083129856
+ 449 0060 00000000 		.word	E03
+ 450              		.cfi_endproc
+ 451              	.LFE68:
+ 453              		.section	.text.AIRP_State,"ax",%progbits
+ 454              		.align	1
+ 455              		.global	AIRP_State
+ 456              		.syntax unified
+ 457              		.thumb
+ 458              		.thumb_func
+ 460              	AIRP_State:
+ 461              	.LFB69:
+ 100:Core/Src/adc-user.c **** 
+ 101:Core/Src/adc-user.c **** /*
+ 102:Core/Src/adc-user.c ****  * 读到电压有三种状态:2.5/5
+ 103:Core/Src/adc-user.c ****  * 2.5V:开启
+ 104:Core/Src/adc-user.c ****  * 5V:  关闭
+ 105:Core/Src/adc-user.c **** 目前为了稳妥一点, 就是暂定读到
+ 106:Core/Src/adc-user.c **** */
+ 107:Core/Src/adc-user.c **** 
+ 108:Core/Src/adc-user.c **** /*检测继电器AIR+状态函数*/
+ 109:Core/Src/adc-user.c **** u8 AIRP_State(){
+ 462              		.loc 1 109 16 is_stmt 1 view -0
+ 463              		.cfi_startproc
+ 464              		@ args = 0, pretend = 0, frame = 0
+ 465              		@ frame_needed = 0, uses_anonymous_args = 0
+ 466 0000 08B5     		push	{r3, lr}
+ 467              	.LCFI6:
+ 468              		.cfi_def_cfa_offset 8
+ 469              		.cfi_offset 3, -8
+ 470              		.cfi_offset 14, -4
+ 110:Core/Src/adc-user.c **** 	u16 ad=adc_average(airp_state, 20);
+ 471              		.loc 1 110 2 view .LVU111
+ 472              		.loc 1 110 9 is_stmt 0 view .LVU112
+ 473 0002 1421     		movs	r1, #20
+ 474 0004 0320     		movs	r0, #3
+ 475 0006 FFF7FEFF 		bl	adc_average
+ 476              	.LVL57:
+ 111:Core/Src/adc-user.c **** 	if(ad<1862){	//1862代表输入3V, 源公式为3.3*ad/4096*2=3, 3.3*ad/4096为ADC采集电压, *2�
+ 477              		.loc 1 111 2 is_stmt 1 view .LVU113
+ 478              		.loc 1 111 4 is_stmt 0 view .LVU114
+ 479 000a 40F24573 		movw	r3, #1861
+ 480 000e 9842     		cmp	r0, r3
+ 481 0010 04D8     		bhi	.L33
+ 112:Core/Src/adc-user.c **** 		E03.Relay.AIRP_State=REALY_ON;				//继电器开启
+ 482              		.loc 1 112 3 is_stmt 1 view .LVU115
+ 483              		.loc 1 112 23 is_stmt 0 view .LVU116
+ 484 0012 0120     		movs	r0, #1
+ 485              	.LVL58:
+ 486              		.loc 1 112 23 view .LVU117
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 12
+
+
+ 487 0014 044B     		ldr	r3, .L36
+ 488 0016 83F83401 		strb	r0, [r3, #308]
+ 113:Core/Src/adc-user.c **** 		return REALY_ON;
+ 489              		.loc 1 113 3 is_stmt 1 view .LVU118
+ 490              	.L34:
+ 114:Core/Src/adc-user.c **** 	}
+ 115:Core/Src/adc-user.c **** 	else{
+ 116:Core/Src/adc-user.c **** 		E03.Relay.AIRP_State=REALY_OFF;				//输入5V, 继电器关闭
+ 117:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 118:Core/Src/adc-user.c **** 	}
+ 119:Core/Src/adc-user.c **** }
+ 491              		.loc 1 119 1 is_stmt 0 view .LVU119
+ 492 001a 08BD     		pop	{r3, pc}
+ 493              	.LVL59:
+ 494              	.L33:
+ 116:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 495              		.loc 1 116 3 is_stmt 1 view .LVU120
+ 116:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 496              		.loc 1 116 23 is_stmt 0 view .LVU121
+ 497 001c 0020     		movs	r0, #0
+ 498              	.LVL60:
+ 116:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 499              		.loc 1 116 23 view .LVU122
+ 500 001e 024B     		ldr	r3, .L36
+ 501 0020 83F83401 		strb	r0, [r3, #308]
+ 117:Core/Src/adc-user.c **** 	}
+ 502              		.loc 1 117 3 is_stmt 1 view .LVU123
+ 117:Core/Src/adc-user.c **** 	}
+ 503              		.loc 1 117 10 is_stmt 0 view .LVU124
+ 504 0024 F9E7     		b	.L34
+ 505              	.L37:
+ 506 0026 00BF     		.align	2
+ 507              	.L36:
+ 508 0028 00000000 		.word	E03
+ 509              		.cfi_endproc
+ 510              	.LFE69:
+ 512              		.section	.text.AIRN_State,"ax",%progbits
+ 513              		.align	1
+ 514              		.global	AIRN_State
+ 515              		.syntax unified
+ 516              		.thumb
+ 517              		.thumb_func
+ 519              	AIRN_State:
+ 520              	.LFB70:
+ 120:Core/Src/adc-user.c **** 
+ 121:Core/Src/adc-user.c **** /*检测继电器AIR-状态函数*/
+ 122:Core/Src/adc-user.c **** u8 AIRN_State(){
+ 521              		.loc 1 122 16 is_stmt 1 view -0
+ 522              		.cfi_startproc
+ 523              		@ args = 0, pretend = 0, frame = 0
+ 524              		@ frame_needed = 0, uses_anonymous_args = 0
+ 525 0000 08B5     		push	{r3, lr}
+ 526              	.LCFI7:
+ 527              		.cfi_def_cfa_offset 8
+ 528              		.cfi_offset 3, -8
+ 529              		.cfi_offset 14, -4
+ 123:Core/Src/adc-user.c **** 	u16 ad=adc_average(airn_state, 10);
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 13
+
+
+ 530              		.loc 1 123 2 view .LVU126
+ 531              		.loc 1 123 9 is_stmt 0 view .LVU127
+ 532 0002 0A21     		movs	r1, #10
+ 533 0004 0420     		movs	r0, #4
+ 534 0006 FFF7FEFF 		bl	adc_average
+ 535              	.LVL61:
+ 124:Core/Src/adc-user.c **** 	if(ad<1862){	//1862代表输入3V, 源公式为3.3*ad/4096*2=3, 3.3*ad/4096为ADC采集电压, *2�
+ 536              		.loc 1 124 2 is_stmt 1 view .LVU128
+ 537              		.loc 1 124 4 is_stmt 0 view .LVU129
+ 538 000a 40F24573 		movw	r3, #1861
+ 539 000e 9842     		cmp	r0, r3
+ 540 0010 04D8     		bhi	.L39
+ 125:Core/Src/adc-user.c **** 		E03.Relay.AIRN_State=REALY_ON;
+ 541              		.loc 1 125 3 is_stmt 1 view .LVU130
+ 542              		.loc 1 125 23 is_stmt 0 view .LVU131
+ 543 0012 0120     		movs	r0, #1
+ 544              	.LVL62:
+ 545              		.loc 1 125 23 view .LVU132
+ 546 0014 044B     		ldr	r3, .L42
+ 547 0016 83F83501 		strb	r0, [r3, #309]
+ 126:Core/Src/adc-user.c **** 		return REALY_ON;
+ 548              		.loc 1 126 3 is_stmt 1 view .LVU133
+ 549              	.L40:
+ 127:Core/Src/adc-user.c **** 	}
+ 128:Core/Src/adc-user.c **** 	else{
+ 129:Core/Src/adc-user.c **** 		E03.Relay.AIRN_State=REALY_OFF;				//输入5V, 继电器关闭
+ 130:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 131:Core/Src/adc-user.c **** 	}
+ 132:Core/Src/adc-user.c **** }
+ 550              		.loc 1 132 1 is_stmt 0 view .LVU134
+ 551 001a 08BD     		pop	{r3, pc}
+ 552              	.LVL63:
+ 553              	.L39:
+ 129:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 554              		.loc 1 129 3 is_stmt 1 view .LVU135
+ 129:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 555              		.loc 1 129 23 is_stmt 0 view .LVU136
+ 556 001c 0020     		movs	r0, #0
+ 557              	.LVL64:
+ 129:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 558              		.loc 1 129 23 view .LVU137
+ 559 001e 024B     		ldr	r3, .L42
+ 560 0020 83F83501 		strb	r0, [r3, #309]
+ 130:Core/Src/adc-user.c **** 	}
+ 561              		.loc 1 130 3 is_stmt 1 view .LVU138
+ 130:Core/Src/adc-user.c **** 	}
+ 562              		.loc 1 130 10 is_stmt 0 view .LVU139
+ 563 0024 F9E7     		b	.L40
+ 564              	.L43:
+ 565 0026 00BF     		.align	2
+ 566              	.L42:
+ 567 0028 00000000 		.word	E03
+ 568              		.cfi_endproc
+ 569              	.LFE70:
+ 571              		.section	.text.PREAIR_State,"ax",%progbits
+ 572              		.align	1
+ 573              		.global	PREAIR_State
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 14
+
+
+ 574              		.syntax unified
+ 575              		.thumb
+ 576              		.thumb_func
+ 578              	PREAIR_State:
+ 579              	.LFB71:
+ 133:Core/Src/adc-user.c **** 
+ 134:Core/Src/adc-user.c **** /*检测继电器PREAIR状态的函数*/
+ 135:Core/Src/adc-user.c **** u8 PREAIR_State(){
+ 580              		.loc 1 135 18 is_stmt 1 view -0
+ 581              		.cfi_startproc
+ 582              		@ args = 0, pretend = 0, frame = 0
+ 583              		@ frame_needed = 0, uses_anonymous_args = 0
+ 584 0000 08B5     		push	{r3, lr}
+ 585              	.LCFI8:
+ 586              		.cfi_def_cfa_offset 8
+ 587              		.cfi_offset 3, -8
+ 588              		.cfi_offset 14, -4
+ 136:Core/Src/adc-user.c **** 	u16 ad=adc_average(pre_state, 10);
+ 589              		.loc 1 136 2 view .LVU141
+ 590              		.loc 1 136 9 is_stmt 0 view .LVU142
+ 591 0002 0A21     		movs	r1, #10
+ 592 0004 0220     		movs	r0, #2
+ 593 0006 FFF7FEFF 		bl	adc_average
+ 594              	.LVL65:
+ 137:Core/Src/adc-user.c **** 	if(ad<1862){	//1862代表输入3V, 源公式为3.3*ad/4096*2=3, 3.3*ad/4096为ADC采集电压, *2�
+ 595              		.loc 1 137 2 is_stmt 1 view .LVU143
+ 596              		.loc 1 137 4 is_stmt 0 view .LVU144
+ 597 000a 40F24573 		movw	r3, #1861
+ 598 000e 9842     		cmp	r0, r3
+ 599 0010 04D8     		bhi	.L45
+ 138:Core/Src/adc-user.c **** 		E03.Relay.PrechargeAIR_State=REALY_ON;
+ 600              		.loc 1 138 3 is_stmt 1 view .LVU145
+ 601              		.loc 1 138 31 is_stmt 0 view .LVU146
+ 602 0012 0120     		movs	r0, #1
+ 603              	.LVL66:
+ 604              		.loc 1 138 31 view .LVU147
+ 605 0014 044B     		ldr	r3, .L48
+ 606 0016 83F83601 		strb	r0, [r3, #310]
+ 139:Core/Src/adc-user.c **** 		return REALY_ON;
+ 607              		.loc 1 139 3 is_stmt 1 view .LVU148
+ 608              	.L46:
+ 140:Core/Src/adc-user.c **** 	}
+ 141:Core/Src/adc-user.c **** 	else{
+ 142:Core/Src/adc-user.c **** 		E03.Relay.PrechargeAIR_State=REALY_OFF;
+ 143:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 144:Core/Src/adc-user.c **** 	}
+ 145:Core/Src/adc-user.c **** }
+ 609              		.loc 1 145 1 is_stmt 0 view .LVU149
+ 610 001a 08BD     		pop	{r3, pc}
+ 611              	.LVL67:
+ 612              	.L45:
+ 142:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 613              		.loc 1 142 3 is_stmt 1 view .LVU150
+ 142:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 614              		.loc 1 142 31 is_stmt 0 view .LVU151
+ 615 001c 0020     		movs	r0, #0
+ 616              	.LVL68:
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 15
+
+
+ 142:Core/Src/adc-user.c **** 		return REALY_OFF;
+ 617              		.loc 1 142 31 view .LVU152
+ 618 001e 024B     		ldr	r3, .L48
+ 619 0020 83F83601 		strb	r0, [r3, #310]
+ 143:Core/Src/adc-user.c **** 	}
+ 620              		.loc 1 143 3 is_stmt 1 view .LVU153
+ 143:Core/Src/adc-user.c **** 	}
+ 621              		.loc 1 143 10 is_stmt 0 view .LVU154
+ 622 0024 F9E7     		b	.L46
+ 623              	.L49:
+ 624 0026 00BF     		.align	2
+ 625              	.L48:
+ 626 0028 00000000 		.word	E03
+ 627              		.cfi_endproc
+ 628              	.LFE71:
+ 630              		.section	.text.verify_relay_OFF,"ax",%progbits
+ 631              		.align	1
+ 632              		.global	verify_relay_OFF
+ 633              		.syntax unified
+ 634              		.thumb
+ 635              		.thumb_func
+ 637              	verify_relay_OFF:
+ 638              	.LFB72:
+ 146:Core/Src/adc-user.c **** 
+ 147:Core/Src/adc-user.c **** /*
+ 148:Core/Src/adc-user.c ****  * brief: 检测函数,判断如果三个继电器均关断则返回true
+ 149:Core/Src/adc-user.c **** */
+ 150:Core/Src/adc-user.c **** u8 verify_relay_OFF(){
+ 639              		.loc 1 150 22 is_stmt 1 view -0
+ 640              		.cfi_startproc
+ 641              		@ args = 0, pretend = 0, frame = 0
+ 642              		@ frame_needed = 0, uses_anonymous_args = 0
+ 643 0000 38B5     		push	{r3, r4, r5, lr}
+ 644              	.LCFI9:
+ 645              		.cfi_def_cfa_offset 16
+ 646              		.cfi_offset 3, -16
+ 647              		.cfi_offset 4, -12
+ 648              		.cfi_offset 5, -8
+ 649              		.cfi_offset 14, -4
+ 151:Core/Src/adc-user.c **** 	if(AIRN_State()==REALY_OFF){			//里面跑了一次AIRN_State()来判断AIR-的状态, 如果确�
+ 650              		.loc 1 151 2 view .LVU156
+ 651              		.loc 1 151 5 is_stmt 0 view .LVU157
+ 652 0002 FFF7FEFF 		bl	AIRN_State
+ 653              	.LVL69:
+ 654              		.loc 1 151 4 view .LVU158
+ 655 0006 10B1     		cbz	r0, .L55
+ 152:Core/Src/adc-user.c **** 		E03.Relay.AIRN_State=REALY_OFF;
+ 153:Core/Src/adc-user.c **** 		if(AIRP_State()==REALY_OFF){
+ 154:Core/Src/adc-user.c **** 			E03.Relay.AIRP_State=REALY_OFF;
+ 155:Core/Src/adc-user.c **** 			if(PREAIR_State()==REALY_OFF){
+ 156:Core/Src/adc-user.c **** 				E03.Relay.PrechargeAIR_State=REALY_OFF;
+ 157:Core/Src/adc-user.c **** 				return TRUE;
+ 158:Core/Src/adc-user.c **** 			}
+ 159:Core/Src/adc-user.c **** 		}
+ 160:Core/Src/adc-user.c **** 	}
+ 161:Core/Src/adc-user.c **** 	return FAULT;
+ 656              		.loc 1 161 9 view .LVU159
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 16
+
+
+ 657 0008 0024     		movs	r4, #0
+ 658              	.L51:
+ 162:Core/Src/adc-user.c **** }
+ 659              		.loc 1 162 1 view .LVU160
+ 660 000a 2046     		mov	r0, r4
+ 661 000c 38BD     		pop	{r3, r4, r5, pc}
+ 662              	.L55:
+ 663 000e 0446     		mov	r4, r0
+ 152:Core/Src/adc-user.c **** 		E03.Relay.AIRN_State=REALY_OFF;
+ 664              		.loc 1 152 3 is_stmt 1 view .LVU161
+ 152:Core/Src/adc-user.c **** 		E03.Relay.AIRN_State=REALY_OFF;
+ 665              		.loc 1 152 23 is_stmt 0 view .LVU162
+ 666 0010 0B4B     		ldr	r3, .L57
+ 667 0012 0022     		movs	r2, #0
+ 668 0014 83F83521 		strb	r2, [r3, #309]
+ 153:Core/Src/adc-user.c **** 			E03.Relay.AIRP_State=REALY_OFF;
+ 669              		.loc 1 153 3 is_stmt 1 view .LVU163
+ 153:Core/Src/adc-user.c **** 			E03.Relay.AIRP_State=REALY_OFF;
+ 670              		.loc 1 153 6 is_stmt 0 view .LVU164
+ 671 0018 FFF7FEFF 		bl	AIRP_State
+ 672              	.LVL70:
+ 153:Core/Src/adc-user.c **** 			E03.Relay.AIRP_State=REALY_OFF;
+ 673              		.loc 1 153 5 view .LVU165
+ 674 001c 0546     		mov	r5, r0
+ 675 001e 0028     		cmp	r0, #0
+ 676 0020 F3D1     		bne	.L51
+ 154:Core/Src/adc-user.c **** 			if(PREAIR_State()==REALY_OFF){
+ 677              		.loc 1 154 4 is_stmt 1 view .LVU166
+ 154:Core/Src/adc-user.c **** 			if(PREAIR_State()==REALY_OFF){
+ 678              		.loc 1 154 24 is_stmt 0 view .LVU167
+ 679 0022 074B     		ldr	r3, .L57
+ 680 0024 0022     		movs	r2, #0
+ 681 0026 83F83421 		strb	r2, [r3, #308]
+ 155:Core/Src/adc-user.c **** 				E03.Relay.PrechargeAIR_State=REALY_OFF;
+ 682              		.loc 1 155 4 is_stmt 1 view .LVU168
+ 155:Core/Src/adc-user.c **** 				E03.Relay.PrechargeAIR_State=REALY_OFF;
+ 683              		.loc 1 155 7 is_stmt 0 view .LVU169
+ 684 002a FFF7FEFF 		bl	PREAIR_State
+ 685              	.LVL71:
+ 155:Core/Src/adc-user.c **** 				E03.Relay.PrechargeAIR_State=REALY_OFF;
+ 686              		.loc 1 155 6 view .LVU170
+ 687 002e 08B1     		cbz	r0, .L56
+ 161:Core/Src/adc-user.c **** }
+ 688              		.loc 1 161 9 view .LVU171
+ 689 0030 2C46     		mov	r4, r5
+ 690 0032 EAE7     		b	.L51
+ 691              	.L56:
+ 156:Core/Src/adc-user.c **** 				return TRUE;
+ 692              		.loc 1 156 5 is_stmt 1 view .LVU172
+ 156:Core/Src/adc-user.c **** 				return TRUE;
+ 693              		.loc 1 156 33 is_stmt 0 view .LVU173
+ 694 0034 024B     		ldr	r3, .L57
+ 695 0036 0022     		movs	r2, #0
+ 696 0038 83F83621 		strb	r2, [r3, #310]
+ 157:Core/Src/adc-user.c **** 			}
+ 697              		.loc 1 157 5 is_stmt 1 view .LVU174
+ 157:Core/Src/adc-user.c **** 			}
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 17
+
+
+ 698              		.loc 1 157 12 is_stmt 0 view .LVU175
+ 699 003c 0124     		movs	r4, #1
+ 700 003e E4E7     		b	.L51
+ 701              	.L58:
+ 702              		.align	2
+ 703              	.L57:
+ 704 0040 00000000 		.word	E03
+ 705              		.cfi_endproc
+ 706              	.LFE72:
+ 708              		.text
+ 709              	.Letext0:
+ 710              		.file 2 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\machine\\_default_types.h"
+ 711              		.file 3 "e:\\gcc-arm-none-eabi\\arm-none-eabi\\include\\sys\\_stdint.h"
+ 712              		.file 4 "Core/Inc/data-user.h"
+ 713              		.file 5 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f105xc.h"
+ 714              		.file 6 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f1xx.h"
+ 715              		.file 7 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h"
+ 716              		.file 8 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h"
+ 717              		.file 9 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc.h"
+ 718              		.file 10 "Core/Inc/adc.h"
+ 719              		.file 11 "Core/Inc/main.h"
+ARM GAS  C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s 			page 18
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 adc-user.c
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:18     .text.adc_read_average:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:24     .text.adc_read_average:00000000 adc_read_average
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:153    .text.adc_read_average:0000006c $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:158    .text.adc_average:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:164    .text.adc_average:00000000 adc_average
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:183    .text.adc_average:0000000a $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:280    .text.adc_average:00000058 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:290    .text.PRE_Voltage:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:296    .text.PRE_Voltage:00000000 PRE_Voltage
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:361    .text.PRE_Voltage:00000048 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:372    .text.TS_Voltage:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:378    .text.TS_Voltage:00000000 TS_Voltage
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:443    .text.TS_Voltage:00000048 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:454    .text.AIRP_State:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:460    .text.AIRP_State:00000000 AIRP_State
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:508    .text.AIRP_State:00000028 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:513    .text.AIRN_State:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:519    .text.AIRN_State:00000000 AIRN_State
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:567    .text.AIRN_State:00000028 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:572    .text.PREAIR_State:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:578    .text.PREAIR_State:00000000 PREAIR_State
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:626    .text.PREAIR_State:00000028 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:631    .text.verify_relay_OFF:00000000 $t
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:637    .text.verify_relay_OFF:00000000 verify_relay_OFF
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:704    .text.verify_relay_OFF:00000040 $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:188    .text.adc_average:0000000f $d
+C:\Users\ride_pig\AppData\Local\Temp\cc27SsbW.s:188    .text.adc_average:00000010 $t
+
+UNDEFINED SYMBOLS
+HAL_ADC_ConfigChannel
+Error_Handler
+HAL_ADC_Start
+HAL_ADC_PollForConversion
+HAL_ADC_GetState
+HAL_ADC_GetValue
+hadc1
+adc
+__aeabi_i2d
+__aeabi_dmul
+__aeabi_ddiv
+__aeabi_d2f
+__aeabi_f2uiz
+E03
