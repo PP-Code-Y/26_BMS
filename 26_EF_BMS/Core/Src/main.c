@@ -69,7 +69,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 const u8 Beep_mute = 0; // 定义蜂鸣器禁止鸣叫位, 1:禁止 0:允许 . 可以修改
 
-BMS E03           = {0}; // 最重要的全局变量E03定义
+BMS E03           = {0}; // 最重要的全局变量E03定义 666
 vu16 adc[num_adc] = {0}; // adc[0]为ADC_PRE, adc[1]为ADC_TS, adc[2]为PRE_STATE, adc[3]为AIR+_STATE, adc[4]为AIR-_STATE
 
 extern int16_t pec15Table[256]; /*以下的在LTC681X.c*/

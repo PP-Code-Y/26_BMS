@@ -3492,40 +3492,40 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   Object Name
 
-       356         46          0          0          0     643591   adc-user.o
-       168         24          0          0         48       1833   adc.o
-      1710        118          0         12          0       9311   can-user.o
-       444         50          0          4         80       2722   can.o
-      3918        126          0        596      12632      25015   daisy-user.o
-       416         30          0          0          0       2542   data-user.o
-      1156         88          0          0          0       7790   flash-user.o
-       360         24          0          0          0       1151   gpio.o
-      1916         76          0          6        512      23883   ltc681x-user.o
-       430         94          1          0       1038       3948   main.o
-      1620        110          0         17        180      11755   os-user.o
-       618         90          0          0          0       7362   relay-user.o
-       380         42          0          0        176       2598   spi.o
+       356         46          0          0          0     643219   adc-user.o
+       168         24          0          0         48       1765   adc.o
+      1710        118          0         12          0       9115   can-user.o
+       444         50          0          4         80       2638   can.o
+      3918        126          0        596      12632      24603   daisy-user.o
+       416         30          0          0          0       2510   data-user.o
+      1156         88          0          0          0       7578   flash-user.o
+       360         24          0          0          0       1119   gpio.o
+      1916         76          0          6        512      23359   ltc681x-user.o
+       430         94          1          0       1038       3820   main.o
+      1620        110          0         17        180      11483   os-user.o
+       618         90          0          0          0       7114   relay-user.o
+       380         42          0          0        176       2514   spi.o
         64         26        336          0       1536        844   startup_stm32f105xc.o
-      1868        124          0        184          0      10511   state-user.o
-       164         28          0         12          0       7365   stm32f1xx_hal.o
-      1258         54          0          0          0       7563   stm32f1xx_hal_adc.o
-       216          6          0          0          0       1550   stm32f1xx_hal_adc_ex.o
-      1654          6          0          0          0      14327   stm32f1xx_hal_can.o
-       198         14          0          0          0      29191   stm32f1xx_hal_cortex.o
-       304          8          0          0          0       1263   stm32f1xx_hal_dma.o
-       504         40          0          0          0       4306   stm32f1xx_hal_gpio.o
-        60          8          0          0          0        974   stm32f1xx_hal_msp.o
-      1464         70         30          0          0       5217   stm32f1xx_hal_rcc.o
-       660         34         30          0          0       3193   stm32f1xx_hal_rcc_ex.o
-      1910          8          0          0          0      10799   stm32f1xx_hal_spi.o
-      1002         34          0          0          0      10653   stm32f1xx_hal_tim.o
-       120         18          0          0          0       2677   stm32f1xx_hal_tim_ex.o
-       124         48          0          0          0       8637   stm32f1xx_it.o
-         2          0         24          4          0       1263   system_stm32f1xx.o
-       308         26          0          0        144       2583   tim.o
+      1868        124          0        184          0      10211   state-user.o
+       164         28          0         12          0       7225   stm32f1xx_hal.o
+      1258         54          0          0          0       7415   stm32f1xx_hal_adc.o
+       216          6          0          0          0       1518   stm32f1xx_hal_adc_ex.o
+      1654          6          0          0          0      14007   stm32f1xx_hal_can.o
+       198         14          0          0          0      29091   stm32f1xx_hal_cortex.o
+       304          8          0          0          0       1227   stm32f1xx_hal_dma.o
+       504         40          0          0          0       4218   stm32f1xx_hal_gpio.o
+        60          8          0          0          0        938   stm32f1xx_hal_msp.o
+      1464         70         30          0          0       5137   stm32f1xx_hal_rcc.o
+       660         34         30          0          0       3141   stm32f1xx_hal_rcc_ex.o
+      1910          8          0          0          0      10611   stm32f1xx_hal_spi.o
+      1002         34          0          0          0      10421   stm32f1xx_hal_tim.o
+       120         18          0          0          0       2613   stm32f1xx_hal_tim_ex.o
+       124         48          0          0          0       8349   stm32f1xx_it.o
+         2          0         24          4          0       1211   system_stm32f1xx.o
+       308         26          0          0        144       2491   tim.o
 
     ----------------------------------------------------------------------
-     25432       1470        454        844      16352     866417   Object Totals
+     25432       1470        454        844      16352     861505   Object Totals
          0          0         32          0          0          0   (incl. Generated)
         60          0          1          9          6          0   (incl. Padding)
 
@@ -3615,8 +3615,8 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     31050       1840        454        844      16452     856757   Grand Totals
-     31050       1840        454        656      16452     856757   ELF Image Totals (compressed)
+     31050       1840        454        844      16452     851845   Grand Totals
+     31050       1840        454        656      16452     851845   ELF Image Totals (compressed)
      31050       1840        454        656          0          0   ROM Totals
 
 ==============================================================================

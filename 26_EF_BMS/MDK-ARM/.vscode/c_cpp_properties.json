@@ -3,18 +3,18 @@
         {
             "name": "HAL_BMS_Modified",
             "includePath": [
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Core\\Inc",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Drivers\\CMSIS\\Include",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Core\\Inc",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Drivers\\CMSIS\\Include",
                 "C:\\Keil_v5\\ARM\\ARMCC\\include",
                 "C:\\Keil_v5\\ARM\\ARMCC\\include\\arm_linux",
                 "C:\\Keil_v5\\ARM\\ARMCC\\include\\arm_linux_compat",
                 "C:\\Keil_v5\\ARM\\ARMCC\\include\\rw",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\MDK-ARM",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Core\\Src",
-                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_EF_BMS\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\MDK-ARM",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Core\\Src",
+                "c:\\Users\\Palladium\\Desktop\\Formax\\寒假设计期\\BMS\\Code\\26_BMS\\26_BMS\\26_EF_BMS\\Drivers\\STM32F1xx_HAL_Driver\\Src"
             ],
             "defines": [
                 "USE_HAL_DRIVER",
